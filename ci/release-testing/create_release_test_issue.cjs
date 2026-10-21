@@ -4,7 +4,7 @@ const { join } = require('node:path');
 // Must match TAG, MARKER and the TAK.gov project in ci/publish_github_release.py.
 const TAG = 'TAK.gov-Forge-CI-CD-Pipeline-Release';
 const RELEASE_MARKER = /<!-- lace-rolling-v1 (\{.*?\}) -->/;
-const PROJECT_ID = '6910';
+const PROJECT_ID = '6912';
 const APK = /^LACE-[0-9A-Za-z._-]+\.apk$/;
 
 function releaseState(release) {

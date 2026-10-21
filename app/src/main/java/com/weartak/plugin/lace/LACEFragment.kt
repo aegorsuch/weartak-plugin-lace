@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,7 +91,6 @@ fun LACEFragment() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var report by remember { mutableStateOf(LaceReport()) }
-    var callsignEdited by remember { mutableStateOf(false) }
     var tx by remember { mutableStateOf<TxState>(TxState.Idle) }
     var confirmReset by remember { mutableStateOf(false) }
 
@@ -113,12 +111,6 @@ fun LACEFragment() {
         }
     }
 
-    // Default the callsign to the WearTAK self callsign until the user edits it.
-    LaunchedEffect(Unit) {
-        val cs = withContext(Dispatchers.IO) { resolveCallsign() }
-        if (!callsignEdited && cs != null) report = report.copy(callsign = cs)
-    }
-
     fun update(r: LaceReport) {
         report = r
         if (tx is TxState.Done) tx = TxState.Idle
@@ -137,12 +129,6 @@ fun LACEFragment() {
                 Text("LACE REPORT", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-            item {
-                FieldChip("Callsign", report.callsign.ifBlank { "Tap to set" }) {
-                    edit("Callsign") { v -> if (v.isNotBlank()) { callsignEdited = true; update(report.copy(callsign = v)) } }
-                }
-            }
-
             item { SectionHeader("L", "Liquid", report.liquid, LIQUID_LABELS) }
             item { StatusSelector(report.liquid) { update(report.copy(liquid = it)) } }
             item {
@@ -178,10 +164,6 @@ fun LACEFragment() {
                 Chip(
                     onClick = {
                         if (tx == TxState.Sending) return@Chip
-                        if (report.callsign.isBlank()) {
-                            tx = TxState.Done(false, "Set a callsign first")
-                            return@Chip
-                        }
                         tx = TxState.Sending
                         val snapshot = report
                         scope.launch {
@@ -208,7 +190,7 @@ fun LACEFragment() {
                     CompactChip(
                         onClick = {
                             if (confirmReset) {
-                                report = LaceReport(callsign = report.callsign)
+                                report = LaceReport()
                                 tx = TxState.Idle
                                 confirmReset = false
                             } else {
@@ -316,9 +298,6 @@ private fun WearTakHomeButton() {
         }
     }
 }
-
-private fun resolveCallsign(): String? =
-    LacePluginRuntime.hostCallsign() ?: LacePluginRuntime.readHostTelemetry()?.callsign
 
 /** Blocking; run off the main thread. */
 private fun transmit(report: LaceReport): TxState {

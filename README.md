@@ -7,6 +7,7 @@ LACE asks WearTAK core to send the report as a chat to **All Chat Rooms**
 from the watch's UID and callsign, saved in the watch's chat history, and routed by WearTAK's
 dispatch policy (only the companion app when bonded; otherwise TAK Server, SITX and multicast).
 Requires a WearTAK build that advertises the `chatDispatchV1` host extra.
+There is no separate callsign to enter in LACE; WearTAK supplies the sender identity.
 
 Built from the [WearTAK plugin template](https://git.tak.gov/weartak-plugins/weartak-plugin-template).
 
@@ -46,7 +47,7 @@ work with WearTAK `.dev`.
 ## Report format
 
 ```text
-ALPHA-1 LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L; Ammo: 5.56 - 4 mags
+LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L; Ammo: 5.56 - 4 mags
 ```
 
 WIA/KIA counts appear when any is above zero; notes appear when filled in.

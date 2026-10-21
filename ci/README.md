@@ -8,7 +8,7 @@ template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-lace`) is canonic
 
 | Trigger | Jobs |
 | --- | --- |
-| Merge request | `release_publisher_tests`, `unit_tests` (debug build, no production signing) |
+| Merge request | `release_publisher_tests`, `release_checklist_tests`, `unit_tests` (debug build, no production signing) |
 | Push to protected `main` | tests, `main_release` (production-signed APK, 30-day artifact), then `publish_github_main` |
 | Tag `vX.Y.Z[.B]` | tests, `official_release` (production-signed APK, kept forever) |
 

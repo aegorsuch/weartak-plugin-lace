@@ -8,7 +8,6 @@ enum class LaceStatus(val meaning: String) {
 }
 
 data class LaceReport(
-    val callsign: String = "",
     val liquid: LaceStatus = LaceStatus.GREEN,
     val liquidNeeds: String = "",
     val ammo: LaceStatus = LaceStatus.GREEN,
@@ -29,9 +28,9 @@ data class LaceReport(
     ).filter { it.second.isNotBlank() }.joinToString("; ") { "${it.first}: ${it.second.trim()}" }
 }
 
-/** LACE chat text, e.g. `ALPHA-1 LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L`. */
+/** LACE chat text; WearTAK supplies the sender's UID and callsign. */
 fun laceRemarks(report: LaceReport): String {
-    val head = "${report.callsign.trim()} LACE: L:${report.liquid} A:${report.ammo} C:${report.casualty} E:${report.equipment}"
+    val head = "LACE: L:${report.liquid} A:${report.ammo} C:${report.casualty} E:${report.equipment}"
     val counts = with(report) { if (urgentWia + priorityWia + routineWia + kia > 0) " (WIA U:$urgentWia P:$priorityWia R:$routineWia KIA:$kia)" else "" }
     val notes = report.notes()
     return if (notes.isBlank()) head + counts else "$head$counts - $notes"
