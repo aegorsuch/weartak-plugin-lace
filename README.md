@@ -8,6 +8,8 @@ from the watch's UID and callsign, saved in the watch's chat history, and routed
 dispatch policy (only the companion app when bonded; otherwise TAK Server, SITX and multicast).
 Requires a WearTAK build that advertises the `chatDispatchV1` host extra.
 There is no separate callsign to enter in LACE; WearTAK supplies the sender identity.
+After WearTAK accepts a report, the form clears for the next report. Failed sends keep
+the form intact, as do any new edits made while a report is sending.
 
 Built from the [WearTAK plugin template](https://git.tak.gov/weartak-plugins/weartak-plugin-template).
 

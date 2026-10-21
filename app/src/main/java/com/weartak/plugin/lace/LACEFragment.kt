@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -117,11 +118,13 @@ fun LACEFragment() {
         confirmReset = false
     }
 
-    val listState = rememberScalingLazyListState()
+    val listState = rememberScalingLazyListState(initialCenterItemIndex = 0)
     Scaffold(positionIndicator = { PositionIndicator(scalingLazyListState = listState) }) {
         ScalingLazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().background(Color.Black),
+            autoCentering = null,
+            contentPadding = PaddingValues(start = 10.dp, top = 4.dp, end = 10.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             item { WearTakHomeButton() }
@@ -167,7 +170,12 @@ fun LACEFragment() {
                         tx = TxState.Sending
                         val snapshot = report
                         scope.launch {
-                            tx = withContext(Dispatchers.IO) { transmit(snapshot) }
+                            val result = withContext(Dispatchers.IO) { transmit(snapshot) }
+                            if (result.ok && report == snapshot) {
+                                report = LaceReport()
+                                confirmReset = false
+                            }
+                            tx = result
                         }
                     },
                     label = {
@@ -291,8 +299,8 @@ private fun WearTakHomeButton() {
                     ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                 }
             },
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
-            modifier = Modifier.size(28.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
+            modifier = Modifier.size(48.dp),
         ) {
             Icon(painterResource(R.drawable.lace_back), contentDescription = "Back to WearTAK", tint = Color.White, modifier = Modifier.size(18.dp))
         }
@@ -300,7 +308,7 @@ private fun WearTakHomeButton() {
 }
 
 /** Blocking; run off the main thread. */
-private fun transmit(report: LaceReport): TxState {
+private fun transmit(report: LaceReport): TxState.Done {
     if (!LacePluginRuntime.isHostAttached()) {
         return TxState.Done(false, "WearTAK not connected. Open WearTAK and enable LACE.")
     }
