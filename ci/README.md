@@ -1,8 +1,8 @@
-# Sextant CI/CD and releases
+# LACE CI/CD and releases
 
 Same model as WearTAK WearOS (`core/weartak-core/wearos-tak-civ`) and the WearTAK plugin
-template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-sextant`) is canonical; GitHub
-(`aegorsuch/weartak-plugin-sextant`) is a mirror.
+template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-lace`) is canonical; GitHub
+(`aegorsuch/weartak-plugin-lace`) is a mirror.
 
 ## Pipeline
 
@@ -35,7 +35,7 @@ Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
 After **all** earlier jobs pass, `publish_github_main` publishes the verified `main_release`
 APK to the GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)** on the
-fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset `Sextant-<version>.apk`
+fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset `LACE-<version>.apk`
 (`<version>` is the versionName without `+sha`). It is a stable release (`prerelease=false`)
 that does not take GitHub's "Latest" flag. The body records versionName/versionCode,
 pipeline ID/IID and URL, source SHA and APK SHA-256.
@@ -48,7 +48,7 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
   it downloads the upload again and checks size + SHA-256 before publishing.
 - Never pushes commits or creates/moves tags; the anchor tag must already exist.
 - Older pipelines never replace newer ones; only older publisher-owned assets are deleted,
-  after verification. Resource group `sextant-github-main` serializes writers.
+  after verification. Resource group `lace-github-main` serializes writers.
 
 ### Administrator setup
 
@@ -57,15 +57,15 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
    `weartak-plugins` group inherit them; elsewhere they need separate approval.
 2. Protect `main` on git.tak.gov.
 3. Create tag `TAK.gov-Forge-CI-CD-Pipeline-Release` on a commit already in the GitHub mirror.
-4. GitHub token able to write releases on `aegorsuch/weartak-plugin-sextant`: a classic
+4. GitHub token able to write releases on `aegorsuch/weartak-plugin-lace`: a classic
    token with only the `public_repo` scope (the mirror is public), or a fine-grained token
    scoped to this repository with **Contents: read and write**. Add it as GitLab variable
-   `SEXTANT_GITHUB_TOKEN` (masked, protected, hidden, no expansion).
+   `LACE_GITHUB_TOKEN` (masked, protected, hidden, no expansion).
 5. If `CI_JOB_TOKEN` cannot read the template, add `SDK_READ_TOKEN` (read_repository).
 
 ## Release testing
 
-After a verified publish, the job sends `repository_dispatch` `sextant-release-published`.
+After a verified publish, the job sends `repository_dispatch` `lace-release-published`.
 `.github/workflows/release-testing.yml` (on the GitHub default branch) re-reads the release
 and opens one issue per pipeline, `Release testing: <release title>`, with the APK link and
 `ci/release-testing/checklist.md`, assigned to the repository variable `RELEASE_TESTER`

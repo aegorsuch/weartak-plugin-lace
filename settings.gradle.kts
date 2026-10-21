@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "weartak-plugin-sextant"
+rootProject.name = "weartak-plugin-lace"
 include(":app")
 

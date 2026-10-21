@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Sextant" parent="@android:style/Theme.DeviceDefault" />
+    <style name="Theme.Lace" parent="@android:style/Theme.DeviceDefault" />
 </resources>

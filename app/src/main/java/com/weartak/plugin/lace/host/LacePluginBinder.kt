@@ -1,4 +1,4 @@
-package com.weartak.plugin.sextant.host
+package com.weartak.plugin.lace.host
 
 import android.os.Bundle
 import android.util.Log
@@ -25,17 +25,17 @@ import com.weartak.plugin.sdk.model.SettingsSchemaParcel
 import com.weartak.plugin.sdk.validation.ContractValidationResult
 import com.weartak.plugin.sdk.validation.PluginMetadataValidator
 import com.weartak.plugin.sdk.validation.SettingsApplyValidator
-import com.weartak.plugin.sextant.BuildConfig
+import com.weartak.plugin.lace.BuildConfig
 
 /**
  * Canonical plugin binder reference: contract-first, validation-aware, minimal behavior.
  * Host startup uses [initializePluginV2] only; [initializePlugin] is a legacy no-op stub.
  */
-class SextantPluginBinder(
+class LacePluginBinder(
     private val lifecycle: PluginLifecycleMachine,
 ) : IWearTakPlugin.Stub() {
 
-    private val pluginDisplayName = "Sextant"
+    private val pluginDisplayName = "LACE"
 
     private var hostCallback: IWearTakHostCallback? = null
     private var control: IWearTakPluginControl? = null
@@ -43,17 +43,17 @@ class SextantPluginBinder(
     private val guard by lazy { PluginBinderGuard(TAG, lifecycle) }
 
     init {
-        SextantPluginRuntime.configurePlugin(DECLARED_PLUGIN_ID, pluginDisplayName)
+        LacePluginRuntime.configurePlugin(DECLARED_PLUGIN_ID, pluginDisplayName)
     }
 
     override fun getPluginInfo(): PluginInfoParcel {
         log("getPluginInfo")
-        return SextantPluginRuntime.getPluginInfo(pluginDisplayName, BuildConfig.VERSION_NAME, BuildConfig.APPLICATION_ID)
+        return LacePluginRuntime.getPluginInfo(pluginDisplayName, BuildConfig.VERSION_NAME, BuildConfig.APPLICATION_ID)
     }
 
     override fun getCapabilities(): PluginCapabilitiesParcel {
         log("getCapabilities")
-        return SextantPluginRuntime.getCapabilities(hostedMainUi = true, externalMainActivity = true)
+        return LacePluginRuntime.getCapabilities(hostedMainUi = true, externalMainActivity = true)
     }
 
     override fun getApiVersion(): Int {
@@ -66,7 +66,7 @@ class SextantPluginBinder(
         return guard.query(
             operation = "getStatus",
             fallback = PluginStatusParcel(lifecycle.snapshot(), message = "shutdown"),
-        ) { SextantPluginRuntime.getStatus(lifecycle.snapshot()) }
+        ) { LacePluginRuntime.getStatus(lifecycle.snapshot()) }
     }
 
     override fun initializePlugin(init: PluginInitParcel?, pluginControl: IWearTakPluginControl?) {
@@ -96,9 +96,9 @@ class SextantPluginBinder(
             }
             control = pluginControl
             controlV2 = pluginControlV2
-            SextantPluginRuntime.attachHost(init, pluginControl, pluginControlV2, hostCallback)
+            LacePluginRuntime.attachHost(init, pluginControl, pluginControlV2, hostCallback)
             logTransition(lifecycle.dispatch(PluginLifecycleEvent.INITIALIZED))
-            SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+            LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
         }
     }
 
@@ -109,7 +109,7 @@ class SextantPluginBinder(
             onShutdown = { emitIllegalState("startPlugin") },
         ) {
             logTransition(lifecycle.dispatch(PluginLifecycleEvent.HOST_STARTED))
-            SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+            LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
         }
     }
 
@@ -120,7 +120,7 @@ class SextantPluginBinder(
             onShutdown = { emitIllegalState("stopPlugin") },
         ) {
             logTransition(lifecycle.dispatch(PluginLifecycleEvent.HOST_STOPPED))
-            SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+            LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
         }
     }
 
@@ -134,8 +134,8 @@ class SextantPluginBinder(
             hostCallback = null
             control = null
             controlV2 = null
-            SextantPluginRuntime.detachHost()
-            SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+            LacePluginRuntime.detachHost()
+            LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
         }
     }
 
@@ -146,7 +146,7 @@ class SextantPluginBinder(
             onShutdown = { emitIllegalState("registerHostCallback") },
         ) {
             hostCallback = callback
-            SextantPluginRuntime.setHostCallback(callback)
+            LacePluginRuntime.setHostCallback(callback)
             logTransition(lifecycle.dispatch(PluginLifecycleEvent.HOST_CALLBACK_REGISTERED))
         }
     }
@@ -159,31 +159,31 @@ class SextantPluginBinder(
         ) {
             if (hostCallback === callback) {
                 hostCallback = null
-                SextantPluginRuntime.setHostCallback(null)
+                LacePluginRuntime.setHostCallback(null)
             }
         }
     }
 
     override fun getSettingsSchema(): SettingsSchemaParcel {
         log("getSettingsSchema")
-        return SextantPluginRuntime.getSettingsSchema()
+        return LacePluginRuntime.getSettingsSchema()
     }
 
-    override fun getSettingsValues(): Bundle = SextantPluginRuntime.getSettingsValues()
+    override fun getSettingsValues(): Bundle = LacePluginRuntime.getSettingsValues()
 
     override fun onHostSettingsChanged(hostSettings: com.weartak.plugin.sdk.model.HostSettingsParcel?) {
-        SextantPluginRuntime.onHostSettingsChanged(hostSettings)
+        LacePluginRuntime.onHostSettingsChanged(hostSettings)
     }
 
     override fun applySettingsWithResult(
         values: Bundle?,
         applyMode: Int,
     ): com.weartak.plugin.sdk.model.SettingsApplyResultParcel {
-        val result = SextantPluginRuntime.applySettings(values, applyMode)
+        val result = LacePluginRuntime.applySettings(values, applyMode)
         if (result.success && result.restartRequired) {
             Log.i(TAG, "applySettingsWithResult: restart-required field changed; re-initializing lifecycle")
             performRestartLifecycleTransition()
-            SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+            LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
         }
         return result
     }
@@ -194,21 +194,21 @@ class SextantPluginBinder(
             operation = "applySettings",
             onShutdown = { emitIllegalState("applySettings") },
         ) {
-            val result = SextantPluginRuntime.applySettings(values, com.weartak.plugin.sdk.model.SettingsApplyMode.PARTIAL_PATCH)
+            val result = LacePluginRuntime.applySettings(values, com.weartak.plugin.sdk.model.SettingsApplyMode.PARTIAL_PATCH)
             if (result.success && result.restartRequired) {
                 Log.i(TAG, "applySettings: restart-required field changed; re-initializing lifecycle")
                 performRestartLifecycleTransition()
-                SextantPluginRuntime.updateLifecycle(lifecycle.snapshot())
+                LacePluginRuntime.updateLifecycle(lifecycle.snapshot())
             }
         }
     }
 
     override fun getMainUiSchema(): PluginMainUiSchemaParcel {
         log("getMainUiSchema")
-        return SextantPluginRuntime.getMainUiSchema()
+        return LacePluginRuntime.getMainUiSchema()
     }
 
-    override fun getMainUiState(): Bundle = SextantPluginRuntime.getMainUiState()
+    override fun getMainUiState(): Bundle = LacePluginRuntime.getMainUiState()
 
     override fun invokeMainUiAction(actionId: String?, args: Bundle?) {
         log("invokeMainUiAction id=$actionId")
@@ -216,7 +216,7 @@ class SextantPluginBinder(
             operation = "invokeMainUiAction",
             onShutdown = { emitIllegalState("invokeMainUiAction") },
         ) {
-            val outcome = SextantPluginRuntime.invokeMainUiAction(actionId, args)
+            val outcome = LacePluginRuntime.invokeMainUiAction(actionId, args)
             Log.d(TAG, "invokeMainUiAction outcome=${outcome.actionId} success=${outcome.success} message=${outcome.message}")
         }
     }
@@ -255,7 +255,7 @@ class SextantPluginBinder(
     }
 
     companion object {
-        private const val TAG = "SextantPlugin"
+        private const val TAG = "LacePlugin"
         val DECLARED_PLUGIN_ID: String = BuildConfig.APPLICATION_ID
     }
 }

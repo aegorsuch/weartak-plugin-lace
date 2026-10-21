@@ -11,11 +11,11 @@ listOf("debug", "release").forEach {
 }
 
 android {
-    namespace = "com.weartak.plugin.sextant"
+    namespace = "com.weartak.plugin.lace"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.weartak.plugin.sextant"
+        applicationId = "com.weartak.plugin.lace"
         minSdk = 30
         targetSdk = 34
         // Same scheme as WearTAK (WEARTAK-239): CI builds get a unique, increasing versionCode
@@ -35,7 +35,7 @@ android {
             versionCode = baseVersionCode
             versionName = baseVersionName
         }
-        base.archivesName.set("Sextant-$baseVersionName-$versionCode")
+        base.archivesName.set("LACE-$baseVersionName-$versionCode")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -81,8 +81,6 @@ dependencies {
     implementation("androidx.wear.compose:compose-material:1.4.0")
     implementation("androidx.wear.compose:compose-foundation:1.4.0")
     implementation("androidx.wear:wear-input:1.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
-    implementation("org.maplibre.compose:maplibre-compose-material3:0.12.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")

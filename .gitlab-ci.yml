@@ -1,4 +1,4 @@
-# Sextant CI/CD - same model as WearTAK WearOS (core/weartak-core/wearos-tak-civ) and the
+# LACE CI/CD - same model as WearTAK WearOS (core/weartak-core/wearos-tak-civ) and the
 # WearTAK plugin template: production-signed release builds, then a verified rolling GitHub
 # release and a tester checklist. See ci/README.md.
 variables:
@@ -133,9 +133,9 @@ publish_github_main:
     entrypoint: [""]
   dependencies:
     - main_release
-  resource_group: sextant-github-main
+  resource_group: lace-github-main
   interruptible: false
   script:
     - python ci/publish_github_release.py
   rules:
-    - if: '$CI_SERVER_HOST == "git.tak.gov" && $CI_PROJECT_PATH == "weartak-plugins/weartak-plugin-sextant" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_REF_PROTECTED == "true" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_SERVER_HOST == "git.tak.gov" && $CI_PROJECT_PATH == "weartak-plugins/weartak-plugin-lace" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_REF_PROTECTED == "true" && $CI_PIPELINE_SOURCE == "push"'

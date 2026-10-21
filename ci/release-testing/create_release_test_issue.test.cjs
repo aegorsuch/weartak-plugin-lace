@@ -11,10 +11,10 @@ function release(overrides = {}) {
     tag_name: TAG,
     name: 'TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p108)',
     html_url: `https://github.com/o/r/releases/tag/${TAG}`,
-    body: `- APK version: **5.8.0.3-p108**\n\n<!-- sextant-rolling-v1 ${JSON.stringify(STATE)} -->`,
+    body: `- APK version: **5.8.0.3-p108**\n\n<!-- lace-rolling-v1 ${JSON.stringify(STATE)} -->`,
     assets: [{
-      name: 'Sextant-5.8.0.3-p108.apk', state: 'uploaded',
-      browser_download_url: 'https://github.com/o/r/releases/download/x/Sextant-5.8.0.3-p108.apk',
+      name: 'LACE-5.8.0.3-p108.apk', state: 'uploaded',
+      browser_download_url: 'https://github.com/o/r/releases/download/x/LACE-5.8.0.3-p108.apk',
     }],
     ...overrides,
   };
@@ -65,14 +65,14 @@ test('creates one assigned checklist with download link and release details', as
   const issue = f.calls.created[0];
   assert.equal(issue.title, 'Release testing: TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p108)');
   assert.deepEqual(issue.assignees, ['paul-weartak']);
-  assert.match(issue.body, /<!-- sextant-release-testing:pipeline-1791701 -->/);
-  assert.match(issue.body, /\[Sextant-5\.8\.0\.3-p108\.apk\]\(https:/);
+  assert.match(issue.body, /<!-- lace-release-testing:pipeline-1791701 -->/);
+  assert.match(issue.body, /\[LACE-5\.8\.0\.3-p108\.apk\]\(https:/);
   assert.match(issue.body, /APK version: \*\*5\.8\.0\.3-p108\*\*/);
   assert.match(issue.body, /## Core acceptance checklist/);
 });
 
 test('existing checklist (even closed) is not duplicated', async () => {
-  const marker = '<!-- sextant-release-testing:pipeline-1791701 -->';
+  const marker = '<!-- lace-release-testing:pipeline-1791701 -->';
   for (const state of ['open', 'closed']) {
     const f = fake({ issues: [{ state, body: marker, html_url: 'x', assignees: [{ login: 'Paul-WearTAK' }] }] });
     await createReleaseTestIssue({ ...f, context: dispatch(), tester: 'paul-weartak' });
@@ -88,7 +88,7 @@ test('pending invitation: mentions without assigning, rerun assigns', async () =
   assert.match(pending.calls.created[0].body, /^@paul-weartak/m);
   assert.ok(pending.logs.some((m) => m.startsWith('WARN')));
 
-  const marker = '<!-- sextant-release-testing:pipeline-1791701 -->';
+  const marker = '<!-- lace-release-testing:pipeline-1791701 -->';
   const later = fake({ issues: [{ state: 'open', number: 5, body: marker, assignees: [] }] });
   await createReleaseTestIssue({ ...later, context: dispatch(), tester: 'paul-weartak' });
   assert.equal(later.calls.created.length, 0);
@@ -115,7 +115,7 @@ test('rejects bad tester, missing metadata, foreign project or missing APK', asy
   await assert.rejects(createReleaseTestIssue({ ...fake(), context: dispatch(), tester: '' }), /RELEASE_TESTER/);
   for (const rel of [
     release({ body: 'no marker' }),
-    release({ body: `<!-- sextant-rolling-v1 ${JSON.stringify({ ...STATE, project_id: '1' })} -->` }),
+    release({ body: `<!-- lace-rolling-v1 ${JSON.stringify({ ...STATE, project_id: '1' })} -->` }),
   ]) {
     const f = fake({ rel });
     await assert.rejects(createReleaseTestIssue({ ...f, context: dispatch(), tester: 'paul-weartak' }), /metadata/);

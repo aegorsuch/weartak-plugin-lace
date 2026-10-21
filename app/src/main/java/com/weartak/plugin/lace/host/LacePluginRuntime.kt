@@ -1,4 +1,4 @@
-package com.weartak.plugin.sextant.host
+package com.weartak.plugin.lace.host
 
 import android.os.Bundle
 import android.os.RemoteException
@@ -51,7 +51,7 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.CopyOnWriteArrayList
 
-data class SextantPluginSnapshot(
+data class LacePluginSnapshot(
     val lifecycleState: PluginLifecycleState = PluginLifecycleState.BOUND,
     val attached: Boolean = false,
     val hostPackageName: String? = null,
@@ -68,18 +68,23 @@ data class SextantPluginSnapshot(
     val reportMode: String = "summary",
 )
 
-data class SextantActionOutcome(
+data class LaceActionOutcome(
     val actionId: String,
     val success: Boolean,
     val message: String,
     val attached: Boolean,
 )
 
-fun interface SextantPluginSnapshotObserver {
-    fun onSnapshotChanged(snapshot: SextantPluginSnapshot)
+/** WearTAK telemetry key for the host's own CoT UID (not yet a DeviceStatusContract constant). */
+const val TELEMETRY_KEY_DEVICE_UID = "deviceUid"
+
+data class HostTelemetry(val lat: Double?, val lon: Double?, val callsign: String?, val deviceUid: String? = null)
+
+fun interface LacePluginSnapshotObserver {
+    fun onSnapshotChanged(snapshot: LacePluginSnapshot)
 }
 
-object SextantPluginRuntime {
+object LacePluginRuntime {
     private const val TAG = "WearTakTemplateRuntime"
 
     private const val ARG_OPERATION = "operation"
@@ -103,7 +108,7 @@ object SextantPluginRuntime {
     private const val DEMO_MARKER_ID = "weartak.template.demo.marker"
 
     private val lock = Any()
-    private val observers = CopyOnWriteArrayList<SextantPluginSnapshotObserver>()
+    private val observers = CopyOnWriteArrayList<LacePluginSnapshotObserver>()
 
     @Volatile
     private var declaredPluginId: String = ""
@@ -300,17 +305,17 @@ object SextantPluginRuntime {
         notifyObservers()
     }
 
-    fun addObserver(observer: SextantPluginSnapshotObserver): SextantPluginSnapshot {
+    fun addObserver(observer: LacePluginSnapshotObserver): LacePluginSnapshot {
         observers += observer
         return currentSnapshot()
     }
 
-    fun removeObserver(observer: SextantPluginSnapshotObserver) {
+    fun removeObserver(observer: LacePluginSnapshotObserver) {
         observers -= observer
     }
 
-    fun currentSnapshot(): SextantPluginSnapshot = synchronized(lock) {
-        SextantPluginSnapshot(
+    fun currentSnapshot(): LacePluginSnapshot = synchronized(lock) {
+        LacePluginSnapshot(
             lifecycleState = lifecycleState,
             attached = isAttachedLocked(),
             hostPackageName = hostPackageName,
@@ -391,7 +396,7 @@ object SextantPluginRuntime {
             displayName = displayNameOverride,
             versionName = versionName,
             packageName = packageName,
-            description = "Reference plugin template with settings, main UI, and control-plane examples.",
+            description = "LACE (Liquid, Ammunition, Casualty, Equipment) report: sends a LACE CoT report through WearTAK.",
         )
 
     fun getCapabilities(hostedMainUi: Boolean, externalMainActivity: Boolean) =
@@ -502,7 +507,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun invokeMainUiAction(actionId: String?, args: Bundle?): SextantActionOutcome {
+    fun invokeMainUiAction(actionId: String?, args: Bundle?): LaceActionOutcome {
         val id = actionId ?: return fail("unknown", "missing action id", attached = isAttached())
         return when (id) {
             ACTION_CEP_DEMO -> runCepDemo(args)
@@ -522,7 +527,49 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runCotDispatchDemo(): SextantActionOutcome {
+    /** True while WearTAK core is bound and can dispatch CoT for this plugin. */
+    fun isHostAttached(): Boolean = synchronized(lock) { pluginControl != null }
+
+    /** Self callsign from WearTAK host settings, if the host has shared it. */
+    fun hostCallsign(): String? = synchronized(lock) { hostSettings?.callsign?.takeIf { it.isNotBlank() } }
+
+    /**
+     * Self PLI and callsign from WearTAK core device telemetry. Blocking binder call; call off the main thread.
+     * Returns null when WearTAK is not bound.
+     */
+    fun readHostTelemetry(): HostTelemetry? {
+        val control = synchronized(lock) { pluginControl } ?: return null
+        return try {
+            val t = control.deviceStatus.telemetry
+            val hasFix = t.getBoolean(DeviceStatusContract.KEY_LOCATION_AVAILABLE, false)
+            HostTelemetry(
+                lat = if (hasFix && t.containsKey(DeviceStatusContract.KEY_LAT)) t.getDouble(DeviceStatusContract.KEY_LAT) else null,
+                lon = if (hasFix && t.containsKey(DeviceStatusContract.KEY_LON)) t.getDouble(DeviceStatusContract.KEY_LON) else null,
+                callsign = t.getString(DeviceStatusContract.KEY_CALLSIGN)?.takeIf { it.isNotBlank() },
+                deviceUid = t.getString(TELEMETRY_KEY_DEVICE_UID)?.takeIf { it.isNotBlank() },
+            )
+        } catch (ex: RemoteException) {
+            Log.w(TAG, "device status failed", ex); null
+        } catch (ex: RuntimeException) {
+            Log.w(TAG, "device status failed", ex); null
+        }
+    }
+
+    /** Hands a CoT event to WearTAK core, which ingests it locally and relays it to the TAK network. */
+    fun dispatchCotXml(actionId: String, cotXml: String): LaceActionOutcome {
+        val control = synchronized(lock) { pluginControl } ?: return notAttached(actionId, "WearTAK not connected")
+        return try {
+            control.requestCotDispatch(CotRequestParcel("cot_xml", Bundle().apply { putString("xml", cotXml) }))
+            recordAction(actionId, "CoT handed to WearTAK")
+        } catch (ex: RemoteException) {
+            reportActionError(actionId, "CoT dispatch failed: ${ex.message ?: "remote error"}")
+        } catch (ex: RuntimeException) {
+            reportActionError(actionId, "CoT dispatch failed: ${ex.message ?: "runtime error"}")
+        }
+    }
+
+    fun pluginIdOrDefault(): String = synchronized(lock) { declaredPluginId.ifBlank { "com.weartak.plugin.lace" } }
+    fun runCotDispatchDemo(): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(ACTION_COT_DEMO, "host control unavailable")
         return try {
             val timestamp = System.currentTimeMillis()
@@ -539,7 +586,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runMarkerDemo(actionId: String, markerOperation: String): SextantActionOutcome {
+    fun runMarkerDemo(actionId: String, markerOperation: String): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(actionId, "host control unavailable")
         return try {
             val marker = demoMarker(markerOperation)
@@ -556,7 +603,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runDeviceStatusDemo(): SextantActionOutcome {
+    fun runDeviceStatusDemo(): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(ACTION_DEVICE_STATUS, "host control unavailable")
         return try {
             val status = control.deviceStatus
@@ -572,7 +619,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runSensorEventDemo(): SextantActionOutcome {
+    fun runSensorEventDemo(): LaceActionOutcome {
         val callback = hostCallback ?: return notAttached(ACTION_SENSOR_EVENT, "host callback unavailable")
         return try {
             val sequence = nextSensorSequence()
@@ -585,7 +632,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runSensorBatchDemo(): SextantActionOutcome {
+    fun runSensorBatchDemo(): LaceActionOutcome {
         val callback = hostCallback ?: return notAttached(ACTION_SENSOR_BATCH, "host callback unavailable")
         return try {
             val timestamp = System.currentTimeMillis()
@@ -599,7 +646,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runCotReadyDemo(args: Bundle? = null): SextantActionOutcome {
+    fun runCotReadyDemo(args: Bundle? = null): LaceActionOutcome {
         val callback = hostCallback ?: return notAttached(ACTION_COT_READY, "host callback unavailable")
         return try {
             val ready = args?.getBoolean("ready", true) ?: true
@@ -612,7 +659,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runCepDemo(args: Bundle? = null): SextantActionOutcome {
+    fun runCepDemo(args: Bundle? = null): LaceActionOutcome {
         val plugin = declaredPluginId.ifBlank { "com.weartak.plugin.unknown" }
         val operation = demoOperation(args)
         val sensorKey = args?.getString("sensorKey")?.takeIf { it.isNotBlank() } ?: "demo.sensor"
@@ -695,7 +742,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runSettingsDemo(): SextantActionOutcome {
+    fun runSettingsDemo(): LaceActionOutcome {
         val current = getSettingsValues()
         val patch = Bundle().apply {
             putBoolean("enable_stream", !current.getBoolean("enable_stream"))
@@ -713,7 +760,7 @@ object SextantPluginRuntime {
         return success(ACTION_SETTINGS_DEMO, "settings updated")
     }
 
-    fun runMapDemo(args: Bundle? = null): SextantActionOutcome {
+    fun runMapDemo(args: Bundle? = null): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(ACTION_MAP_DEMO, "map control unavailable")
         val operation = demoOperation(args)
         return try {
@@ -783,7 +830,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runAlertDemo(args: Bundle? = null): SextantActionOutcome {
+    fun runAlertDemo(args: Bundle? = null): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(ACTION_ALERT_DEMO, "alert control unavailable")
         return try {
             val title = args?.getString("title")?.takeIf { it.isNotBlank() } ?: "WearTAK Alert"
@@ -832,7 +879,7 @@ object SextantPluginRuntime {
         }
     }
 
-    fun runHelloWorldDemo(): SextantActionOutcome {
+    fun runHelloWorldDemo(): LaceActionOutcome {
         val control = pluginControl
         return try {
             val message = "Hello world from $displayName"
@@ -898,7 +945,7 @@ object SextantPluginRuntime {
         Locale.US,
     ).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(timestamp))
 
-    private fun recordAction(actionId: String, message: String): SextantActionOutcome {
+    private fun recordAction(actionId: String, message: String): LaceActionOutcome {
         synchronized(lock) {
             lastActionId = actionId
             lastActionMessage = message
@@ -938,12 +985,12 @@ object SextantPluginRuntime {
     private fun isAttachedLocked(): Boolean = pluginControl != null || pluginControlV2 != null
 
     private fun success(actionId: String, message: String, attached: Boolean = isAttached()) =
-        SextantActionOutcome(actionId = actionId, success = true, message = message, attached = attached)
+        LaceActionOutcome(actionId = actionId, success = true, message = message, attached = attached)
 
     private fun notAttached(actionId: String, message: String) =
-        SextantActionOutcome(actionId = actionId, success = false, message = "NOT_ATTACHED: $message", attached = false)
+        LaceActionOutcome(actionId = actionId, success = false, message = "NOT_ATTACHED: $message", attached = false)
 
-    private fun fail(actionId: String, message: String, attached: Boolean): SextantActionOutcome {
+    private fun fail(actionId: String, message: String, attached: Boolean): LaceActionOutcome {
         synchronized(lock) {
             lastActionId = actionId
             lastActionMessage = message
@@ -952,10 +999,10 @@ object SextantPluginRuntime {
         val cb = hostCallback
         PluginBinderErrorReporter.validationFailed(TAG, actionId, message, cb, PluginErrorCodes.ILLEGAL_STATE)
         notifyObservers()
-        return SextantActionOutcome(actionId = actionId, success = false, message = message, attached = attached)
+        return LaceActionOutcome(actionId = actionId, success = false, message = message, attached = attached)
     }
 
-    private fun reportActionError(actionId: String, message: String): SextantActionOutcome =
+    private fun reportActionError(actionId: String, message: String): LaceActionOutcome =
         fail(actionId, message, attached = isAttached())
 
     private fun demoOperation(args: Bundle?): String =

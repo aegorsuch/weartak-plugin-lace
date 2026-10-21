@@ -22,28 +22,28 @@ SPEC.loader.exec_module(p)
 def environment():
     return {
         "CI_SERVER_HOST": "git.tak.gov",
-        "CI_PROJECT_PATH": "weartak-plugins/weartak-plugin-sextant",
+        "CI_PROJECT_PATH": "weartak-plugins/weartak-plugin-lace",
         "CI_COMMIT_BRANCH": "main",
         "CI_COMMIT_REF_PROTECTED": "true",
         "CI_PIPELINE_SOURCE": "push",
-        "SEXTANT_GITHUB_TOKEN": "mock-token",
+        "LACE_GITHUB_TOKEN": "mock-token",
         "CI_PROJECT_ID": "42",
         "CI_PIPELINE_ID": "456",
         "CI_PIPELINE_IID": "12",
-        "CI_PIPELINE_URL": "https://git.tak.gov/weartak-plugins/weartak-plugin-sextant/-/pipelines/456",
+        "CI_PIPELINE_URL": "https://git.tak.gov/weartak-plugins/weartak-plugin-lace/-/pipelines/456",
         "CI_COMMIT_SHA": "e" * 40,
     }
 
 
 def asset(asset_id, iid, content=b"old apk"):
-    name = f"Sextant-5.8.0.3-p{iid}.apk"
+    name = f"LACE-5.8.0.3-p{iid}.apk"
     return {"id": asset_id, "name": name, "label": name, "state": "uploaded", "size": len(content)}
 
 
 def legacy_asset(asset_id, iid, content=b"old apk"):
     digest = hashlib.sha256(content).hexdigest()
     return {
-        "id": asset_id, "name": f"sextant-development-p{iid}-{digest}.apk",
+        "id": asset_id, "name": f"lace-development-p{iid}-{digest}.apk",
         "label": f"{p.LABEL_PREFIX}{digest}", "state": "uploaded", "size": len(content),
     }
 
@@ -119,14 +119,14 @@ class PublisherTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         output = self.root / p.OUTPUT
         output.mkdir(parents=True)
-        self.apk = output / "Sextant-release.apk"
+        self.apk = output / "LACE-release.apk"
         self.apk.write_bytes(b"signed apk fixture")
         self.digest = hashlib.sha256(self.apk.read_bytes()).hexdigest()
         (output / "verified-apk.sha256").write_text(
             f"{self.digest}  {self.apk.relative_to(self.root).as_posix()}\n"
         )
         self.metadata = {
-            "applicationId": "com.weartak.plugin.sextant", "variantName": "release",
+            "applicationId": "com.weartak.plugin.lace", "variantName": "release",
             "elements": [{
                 "versionCode": 583, "versionName": "5.8.0.3", "outputFile": self.apk.name,
             }],
@@ -154,7 +154,7 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
         self.assertEqual(api.release["tag_name"], "TAK.gov-Forge-CI-CD-Pipeline-Release")
         self.assertEqual([(a["name"], a["label"]) for a in api.items],
-                         [("Sextant-5.8.0.3-p12.apk", "Sextant-5.8.0.3-p12.apk")])
+                         [("LACE-5.8.0.3-p12.apk", "LACE-5.8.0.3-p12.apk")])
         self.assertEqual(api.release["make_latest"], "false")
         body = api.release["body"]
         for value in ("5.8.0.3", "583", self.digest, "e" * 40, self.state["pipeline_url"]):
@@ -249,7 +249,7 @@ class PublisherTests(unittest.TestCase):
         api = FakeGitHub()
         self.publish(api)
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
-        self.assertEqual(api.items[0]["name"], "Sextant-5.8.0.3-p12.apk")
+        self.assertEqual(api.items[0]["name"], "LACE-5.8.0.3-p12.apk")
         self.assertIn("5.8.0.3-p12+de139f69", api.release["body"])
 
     def test_legacy_named_assets_are_cleaned_up(self):
@@ -366,7 +366,7 @@ class PublisherTests(unittest.TestCase):
             p.artifact(self.root)
 
     def test_debug_or_wrong_output_metadata_is_rejected(self):
-        for key, value in (("applicationId", "com.weartak.plugin.sextant.dev"),
+        for key, value in (("applicationId", "com.weartak.plugin.lace.dev"),
                            ("variantName", "debug")):
             original = copy.deepcopy(self.metadata)
             self.metadata[key] = value

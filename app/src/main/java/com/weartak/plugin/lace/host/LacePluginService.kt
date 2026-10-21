@@ -1,4 +1,4 @@
-package com.weartak.plugin.sextant.host
+package com.weartak.plugin.lace.host
 
 import android.app.Service
 import android.content.Intent
@@ -12,14 +12,14 @@ import com.weartak.plugin.sdk.lifecycle.PluginLifecycleTransition
 /**
  * Exported entry point for host binding. Action and permission: [com.weartak.plugin.sdk.WearTakPluginContract].
  */
-class SextantPluginService : Service() {
+class LacePluginService : Service() {
 
     private val lifecycle = PluginLifecycleMachine()
-    private val binder by lazy { SextantPluginBinder(lifecycle) }
+    private val binder by lazy { LacePluginBinder(lifecycle) }
 
     override fun onCreate() {
         super.onCreate()
-        SextantPluginRuntime.setCepRulesJson(loadPluginRulesJson())
+        LacePluginRuntime.setCepRulesJson(loadPluginRulesJson())
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -29,7 +29,7 @@ class SextantPluginService : Service() {
     }
 
     override fun onDestroy() {
-        SextantPluginRuntime.setCepRulesJson(null)
+        LacePluginRuntime.setCepRulesJson(null)
         logTransition(lifecycle.dispatch(PluginLifecycleEvent.RESET))
         super.onDestroy()
     }
@@ -49,7 +49,7 @@ class SextantPluginService : Service() {
     }
 
     companion object {
-        private const val TAG = "SextantSvc"
+        private const val TAG = "LaceSvc"
         private const val PLUGIN_RULES_ASSET = "plugin_rules.json"
     }
 }

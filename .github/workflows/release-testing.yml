@@ -5,7 +5,7 @@ name: Release testing checklist
 
 on:
   repository_dispatch:
-    types: [sextant-release-published]
+    types: [lace-release-published]
   workflow_dispatch:
 
 permissions:

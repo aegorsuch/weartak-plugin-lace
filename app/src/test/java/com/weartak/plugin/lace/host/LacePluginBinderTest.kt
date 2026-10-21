@@ -1,4 +1,4 @@
-package com.weartak.plugin.sextant.host
+package com.weartak.plugin.lace.host
 
 import android.os.Bundle
 import com.weartak.plugin.sdk.aidl.IWearTakHostCallback
@@ -35,15 +35,15 @@ import org.robolectric.Robolectric
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
-class SextantPluginBinderTest {
+class LacePluginBinderTest {
 
     private var lifecycle: PluginLifecycleMachine? = null
-    private var binder: SextantPluginBinder? = null
+    private var binder: LacePluginBinder? = null
 
-    private fun newBinderPair(): Pair<PluginLifecycleMachine, SextantPluginBinder> {
+    private fun newBinderPair(): Pair<PluginLifecycleMachine, LacePluginBinder> {
         val lc = PluginLifecycleMachine()
         lc.dispatch(PluginLifecycleEvent.BIND_ATTACHED)
-        val b = SextantPluginBinder(lc)
+        val b = LacePluginBinder(lc)
         lifecycle = lc
         binder = b
         return lc to b
@@ -52,12 +52,12 @@ class SextantPluginBinderTest {
     @After
     fun tearDown() {
         binder?.shutdownPlugin()
-        SextantPluginRuntime.resetForTests()
+        LacePluginRuntime.resetForTests()
         binder = null
         lifecycle = null
     }
 
-    private fun driveToRunning(b: SextantPluginBinder, cb: RecordingHostCallback) {
+    private fun driveToRunning(b: LacePluginBinder, cb: RecordingHostCallback) {
         b.registerHostCallback(cb)
         b.initializePluginV2(null, null, null)
         b.startPlugin()
@@ -84,15 +84,15 @@ class SextantPluginBinderTest {
         val (_, b) = newBinderPair()
         val cb = RecordingHostCallback()
         driveToRunning(b, cb)
-        b.invokeMainUiAction(SextantPluginRuntime.ACTION_HELLO_WORLD, Bundle())
-        assertEquals(SextantPluginRuntime.ACTION_HELLO_WORLD, b.getMainUiState().getString("last_action"))
+        b.invokeMainUiAction(LacePluginRuntime.ACTION_HELLO_WORLD, Bundle())
+        assertEquals(LacePluginRuntime.ACTION_HELLO_WORLD, b.getMainUiState().getString("last_action"))
         assertTrue(b.getMainUiState().getString("last_message")?.contains("hello") == true)
     }
 
     @Test
     fun mapRun_withoutHost_returnsNotAttached() {
-        SextantPluginRuntime.resetForTests()
-        val outcome = SextantPluginRuntime.runMapDemo()
+        LacePluginRuntime.resetForTests()
+        val outcome = LacePluginRuntime.runMapDemo()
         assertFalse(outcome.success)
         assertFalse(outcome.attached)
         assertTrue(outcome.message.contains("NOT_ATTACHED"))
@@ -100,9 +100,9 @@ class SextantPluginBinderTest {
 
     @Test
     fun cepRun_removeDoesNotNeedAssetWhenCleared() {
-        val service = Robolectric.buildService(SextantPluginService::class.java).create().get()
+        val service = Robolectric.buildService(LacePluginService::class.java).create().get()
         try {
-            SextantPluginRuntime.resetForTests()
+            LacePluginRuntime.resetForTests()
             val (_, b) = newBinderPair()
             val cb = RecordingHostCallback()
             val control = RecordingPluginControl(
@@ -112,14 +112,14 @@ class SextantPluginBinderTest {
             b.initializePluginV2(null, control, null)
             b.startPlugin()
 
-            val removeOutcome = SextantPluginRuntime.runCepDemo(Bundle().apply { putString("operation", "remove") })
+            val removeOutcome = LacePluginRuntime.runCepDemo(Bundle().apply { putString("operation", "remove") })
             assertTrue(removeOutcome.success)
             assertTrue(removeOutcome.message.contains("removed"))
             assertEquals(1, control.unregisterCalls.size)
             assertTrue(control.registerCalls.isEmpty())
         } finally {
             service.onDestroy()
-            SextantPluginRuntime.resetForTests()
+            LacePluginRuntime.resetForTests()
         }
     }
 
@@ -134,13 +134,13 @@ class SextantPluginBinderTest {
         b.initializePluginV2(null, control, null)
         b.startPlugin()
 
-        val addOutcome = SextantPluginRuntime.runMapDemo()
+        val addOutcome = LacePluginRuntime.runMapDemo()
         assertTrue(addOutcome.success)
         assertTrue(addOutcome.message.contains("published"))
         assertEquals(1, control.mapLayerControl.commands.size)
         assertEquals(1, control.mapLayerControl.commands.single().commandCode)
 
-        val removeOutcome = SextantPluginRuntime.runMapDemo(Bundle().apply { putString("operation", "remove") })
+        val removeOutcome = LacePluginRuntime.runMapDemo(Bundle().apply { putString("operation", "remove") })
         assertTrue(removeOutcome.success)
         assertTrue(removeOutcome.message.contains("removed"))
         assertEquals(2, control.mapLayerControl.commands.size)

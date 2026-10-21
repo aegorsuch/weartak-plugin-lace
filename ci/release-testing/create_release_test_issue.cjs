@@ -3,9 +3,9 @@ const { join } = require('node:path');
 
 // Must match TAG, MARKER and the TAK.gov project in ci/publish_github_release.py.
 const TAG = 'TAK.gov-Forge-CI-CD-Pipeline-Release';
-const RELEASE_MARKER = /<!-- sextant-rolling-v1 (\{.*?\}) -->/;
+const RELEASE_MARKER = /<!-- lace-rolling-v1 (\{.*?\}) -->/;
 const PROJECT_ID = '6910';
-const APK = /^Sextant-[0-9A-Za-z._-]+\.apk$/;
+const APK = /^LACE-[0-9A-Za-z._-]+\.apk$/;
 
 function releaseState(release) {
   const match = RELEASE_MARKER.exec(release.body || '');
@@ -57,9 +57,9 @@ async function createReleaseTestIssue({ github, context, core, tester }) {
     }
   }
   const apk = (release.assets || []).find((a) => APK.test(a.name) && a.state === 'uploaded');
-  if (!apk) throw new Error(`Release ${TAG} has no uploaded Sextant APK.`);
+  if (!apk) throw new Error(`Release ${TAG} has no uploaded LACE APK.`);
 
-  const marker = `<!-- sextant-release-testing:pipeline-${pipelineId} -->`;
+  const marker = `<!-- lace-release-testing:pipeline-${pipelineId} -->`;
   const assignable = await canAssign(github, repo, tester);
   // Include closed issues so reruns cannot recreate a completed checklist.
   for await (const page of github.paginate.iterator(
@@ -84,7 +84,7 @@ async function createReleaseTestIssue({ github, context, core, tester }) {
   const checklist = readFileSync(join(__dirname, 'checklist.md'), 'utf8');
   const body = [
     marker,
-    `@${tester}, please test this Sextant build and record results below.`,
+    `@${tester}, please test this LACE build and record results below.`,
     '',
     `**Download:** [${apk.name}](${apk.browser_download_url})`,
     `**Release:** [${release.name}](${release.html_url})`,

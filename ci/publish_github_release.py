@@ -11,16 +11,16 @@ import urllib.parse
 import urllib.request
 
 
-REPO = "aegorsuch/weartak-plugin-sextant"
+REPO = "aegorsuch/weartak-plugin-lace"
 # Git tags cannot contain spaces or "/", so the tag is the title in tag-safe form.
 TAG = "TAK.gov-Forge-CI-CD-Pipeline-Release"
 TITLE = "TAK.gov Forge CI/CD Pipeline Release"
-MARKER = "sextant-rolling-v1"
-ASSET_PATTERN = re.compile(r"Sextant-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
-LEGACY_ASSET_PATTERN = re.compile(r"sextant-development-p([1-9][0-9]*)-([0-9a-f]{64})\.apk")
-LABEL_PREFIX = "sextant-rolling-v1:"
+MARKER = "lace-rolling-v1"
+ASSET_PATTERN = re.compile(r"LACE-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
+LEGACY_ASSET_PATTERN = re.compile(r"lace-development-p([1-9][0-9]*)-([0-9a-f]{64})\.apk")
+LABEL_PREFIX = "lace-rolling-v1:"
 # Handled by .github/workflows/release-testing.yml on the GitHub default branch.
-DISPATCH_EVENT = "sextant-release-published"
+DISPATCH_EVENT = "lace-release-published"
 OUTPUT = Path("app/build/outputs/apk/release")
 
 
@@ -51,7 +51,7 @@ class GitHub:
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "Sextant-GitLab-release",
+            "User-Agent": "LACE-GitLab-release",
         }
         if data is not None:
             if binary:
@@ -70,7 +70,7 @@ class GitHub:
             # Do not print request headers, tokens, signed URLs, or raw API responses.
             raise PublishError(
                 f"GitHub {method} {path.split('?')[0]} returned HTTP {error.code}. "
-                "Check the protected SEXTANT_GITHUB_TOKEN (repository Contents: write), "
+                "Check the protected LACE_GITHUB_TOKEN (repository Contents: write), "
                 "repository access, rolling tag, and API availability."
             ) from None
         except urllib.error.URLError:
@@ -86,7 +86,7 @@ class GitHub:
                 "Authorization": f"Bearer {self.token}",
                 "Accept": "application/octet-stream",
                 "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "Sextant-GitLab-release",
+                "User-Agent": "LACE-GitLab-release",
             },
         )
         try:
@@ -119,7 +119,7 @@ class GitHub:
 def configuration(env):
     expected = {
         "CI_SERVER_HOST": "git.tak.gov",
-        "CI_PROJECT_PATH": "weartak-plugins/weartak-plugin-sextant",
+        "CI_PROJECT_PATH": "weartak-plugins/weartak-plugin-lace",
         "CI_COMMIT_BRANCH": "main",
         "CI_COMMIT_REF_PROTECTED": "true",
         "CI_PIPELINE_SOURCE": "push",
@@ -127,12 +127,12 @@ def configuration(env):
     for name, value in expected.items():
         if env.get(name) != value:
             raise PublishError(f"Publishing requires {name}={value}.")
-    required = ("SEXTANT_GITHUB_TOKEN", "CI_PROJECT_ID", "CI_PIPELINE_IID",
+    required = ("LACE_GITHUB_TOKEN", "CI_PROJECT_ID", "CI_PIPELINE_IID",
                 "CI_PIPELINE_ID", "CI_PIPELINE_URL", "CI_COMMIT_SHA")
     for name in required:
         if not env.get(name):
             raise PublishError(
-                f"Missing {name}. Configure SEXTANT_GITHUB_TOKEN as a masked, protected "
+                f"Missing {name}. Configure LACE_GITHUB_TOKEN as a masked, protected "
                 "GitLab CI variable with access only to the destination repository."
             )
     for name in ("CI_PROJECT_ID", "CI_PIPELINE_IID", "CI_PIPELINE_ID"):
@@ -141,7 +141,7 @@ def configuration(env):
     if not re.fullmatch(r"[0-9a-f]{40}", env["CI_COMMIT_SHA"]):
         raise PublishError("Invalid source commit SHA.")
     expected_url = (
-        f"https://git.tak.gov/weartak-plugins/weartak-plugin-sextant/-/pipelines/{env['CI_PIPELINE_ID']}"
+        f"https://git.tak.gov/weartak-plugins/weartak-plugin-lace/-/pipelines/{env['CI_PIPELINE_ID']}"
     )
     if env["CI_PIPELINE_URL"] != expected_url:
         raise PublishError("Pipeline URL does not match the canonical source project.")
@@ -166,10 +166,10 @@ def artifact(root):
         raise PublishError("APK does not match the production-signature verification checksum.")
     metadata = json.loads((directory / "output-metadata.json").read_text())
     elements = metadata.get("elements", [])
-    if (metadata.get("applicationId") != "com.weartak.plugin.sextant"
+    if (metadata.get("applicationId") != "com.weartak.plugin.lace"
             or metadata.get("variantName") != "release" or len(elements) != 1
             or elements[0].get("outputFile") != apk.name):
-        raise PublishError("Gradle metadata must describe the single Sextant release APK.")
+        raise PublishError("Gradle metadata must describe the single LACE release APK.")
     version = elements[0].get("versionName")
     code = elements[0].get("versionCode")
     if not isinstance(version, str) or not re.fullmatch(r"[0-9A-Za-z.+_-]+", version):
@@ -246,7 +246,7 @@ def publish(api, state, apk, digest, version, code):
     short = display_version(version, state["pipeline_iid"])
     title = f"{TITLE} ({short})"
     body = (
-        "Automatically published stable Sextant main-channel build.\n\n"
+        "Automatically published stable LACE main-channel build.\n\n"
         f"- APK version: **{version}** (versionCode **{code}**)\n"
         f"- Build: GitLab pipeline **{state['pipeline_id']}** "
         f"(project pipeline **{state['pipeline_iid']}**)\n"
@@ -265,7 +265,7 @@ def publish(api, state, apk, digest, version, code):
         })
     release_id = release["id"]
     assets = api.assets(release_id)
-    name = f"Sextant-{short}.apk"
+    name = f"LACE-{short}.apk"
     # GitHub shows the label instead of the file name, so keep it human-readable.
     label = name
     existing = [item for item in assets if item["name"] == name]
@@ -319,7 +319,7 @@ def main():
     try:
         state = configuration(os.environ)
         apk, digest, version, code = artifact(Path.cwd())
-        publish(GitHub(os.environ["SEXTANT_GITHUB_TOKEN"]), state, apk, digest, version, code)
+        publish(GitHub(os.environ["LACE_GITHUB_TOKEN"]), state, apk, digest, version, code)
     except (PublishError, OSError, ValueError, KeyError, TypeError, urllib.error.URLError) as error:
         # urllib transport errors can contain signed URLs; do not echo their details.
         message = str(error) if isinstance(error, PublishError) else type(error).__name__
