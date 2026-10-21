@@ -30,6 +30,18 @@ release_publisher_tests:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_COMMIT_TAG'
 
+release_checklist_tests:
+  stage: test
+  image:
+    name: node:22-slim
+    entrypoint: [""]
+  script:
+    - node --test ci/release-testing/create_release_test_issue.test.cjs
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_TAG'
+
 # Unit tests + debug build on every merge request and main push (no production signing).
 unit_tests:
   extends: .gradle_image

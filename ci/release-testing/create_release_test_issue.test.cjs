@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { createReleaseTestIssue, TAG } = require('./create_release_test_issue.cjs');
 
-const STATE = { pipeline_id: '1791701', pipeline_iid: 108, project_id: '6910' };
+const STATE = { pipeline_id: '1791701', pipeline_iid: 108, project_id: '6912' };
 
 function release(overrides = {}) {
   return {
@@ -116,6 +116,7 @@ test('rejects bad tester, missing metadata, foreign project or missing APK', asy
   for (const rel of [
     release({ body: 'no marker' }),
     release({ body: `<!-- lace-rolling-v1 ${JSON.stringify({ ...STATE, project_id: '1' })} -->` }),
+    release({ body: `<!-- lace-rolling-v1 ${JSON.stringify({ ...STATE, project_id: '6910' })} -->` }),
   ]) {
     const f = fake({ rel });
     await assert.rejects(createReleaseTestIssue({ ...f, context: dispatch(), tester: 'paul-weartak' }), /metadata/);

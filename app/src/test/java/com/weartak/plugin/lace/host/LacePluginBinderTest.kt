@@ -1,6 +1,8 @@
 package com.weartak.plugin.lace.host
 
 import android.os.Bundle
+import com.weartak.plugin.lace.LaceReport
+import com.weartak.plugin.lace.laceRemarks
 import com.weartak.plugin.sdk.aidl.IWearTakHostCallback
 import com.weartak.plugin.sdk.aidl.IWearTakMapLayerControl
 import com.weartak.plugin.sdk.aidl.IWearTakPluginControl
@@ -106,11 +108,12 @@ class LacePluginBinderTest {
         )
         assertTrue(LacePluginRuntime.hostSupportsChat())
 
-        val outcome = LacePluginRuntime.dispatchChat("lace.transmit", "ALPHA-1 LACE: L:GREEN A:GREEN C:GREEN E:GREEN")
+        val outcome = LacePluginRuntime.dispatchChat("lace.transmit", laceRemarks(LaceReport()))
         assertTrue(outcome.success)
         val req = control.cotRequests.single()
         assertEquals("chat", req.payloadFormat)
-        assertEquals("ALPHA-1 LACE: L:GREEN A:GREEN C:GREEN E:GREEN", req.payload.getString("message"))
+        assertEquals("LACE: L:GREEN A:GREEN C:GREEN E:GREEN", req.payload.getString("message"))
+        assertEquals(setOf("message", "roomUid", "roomTitle"), req.payload.keySet())
         assertEquals("All Chat Rooms", req.payload.getString("roomUid"))
         assertEquals("All Chat Rooms", req.payload.getString("roomTitle"))
     }
