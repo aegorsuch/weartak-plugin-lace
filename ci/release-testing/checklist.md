@@ -25,7 +25,7 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **WearTAK binds the plugin:** with release WearTAK installed, LACE appears
   in WearTAK's plugin menu as **LACE / Unfunded Request** and stays connected.
 - [ ] **Open from WearTAK:** tapping the LACE menu item opens the LACE REPORT form;
-  the back button returns to WearTAK.
+  the small back arrow sits at the top without a large blank area and returns to WearTAK.
 - [ ] **Callsign:** no callsign entry is required in LACE; WearTAK supplies its own UID and callsign.
 - [ ] **Selectors:** each of L / A / C / E switches between GREEN, YELLOW, RED and
   BLACK, and shows the matching meaning.
@@ -34,6 +34,9 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **Transmit:** **TRANSMIT REPORT** shows "Sent to All Chat Rooms". The
   receiving EUD shows the report in **All Chat Rooms** reading
   `LACE: L:x A:x C:x E:x - notes`, and it appears in the watch's WearTAK chat.
+- [ ] **Clear after transmit:** once WearTAK accepts the report, selectors return
+  to their defaults, counts become zero and notes clear. Edits made during sending
+  are preserved.
 - [ ] **Sender identity:** the chat comes from the same contact as the watch's PLI
   (not a separate LACE contact).
 - [ ] **Routing:** bonded to the companion app, the report reaches ATAK through the phone;
@@ -41,7 +44,7 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **Old WearTAK:** with a WearTAK build lacking plugin chat, transmit shows
   "Update WearTAK" and nothing is sent.
 - [ ] **WearTAK not connected:** with WearTAK stopped, transmit shows a clear
-  "WearTAK not connected" message and does not crash.
+  "WearTAK not connected" message and does not crash or clear the report.
 - [ ] **Reset:** **RESET** needs a second tap and clears all report fields.
 
 ## Results
