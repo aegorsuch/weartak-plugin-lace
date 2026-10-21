@@ -9,10 +9,6 @@
         android:name="android.hardware.type.watch"
         android:required="true" />
 
-    <!-- Fallback self location when WearTAK has no PLI fix. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />

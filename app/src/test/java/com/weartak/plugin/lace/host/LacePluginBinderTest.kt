@@ -14,6 +14,7 @@ import com.weartak.plugin.sdk.model.HostSettingsParcel
 import com.weartak.plugin.sdk.model.CotReadyEventParcel
 import com.weartak.plugin.sdk.model.PluginErrorCodes
 import com.weartak.plugin.sdk.model.PluginErrorParcel
+import com.weartak.plugin.sdk.model.PluginInitParcel
 import com.weartak.plugin.sdk.model.MapLayerCommandParcel
 import com.weartak.plugin.sdk.model.MarkerParcel
 import com.weartak.plugin.sdk.model.PluginLifecycleState
@@ -87,6 +88,31 @@ class LacePluginBinderTest {
         b.invokeMainUiAction(LacePluginRuntime.ACTION_HELLO_WORLD, Bundle())
         assertEquals(LacePluginRuntime.ACTION_HELLO_WORLD, b.getMainUiState().getString("last_action"))
         assertTrue(b.getMainUiState().getString("last_message")?.contains("hello") == true)
+    }
+
+    @Test
+    fun dispatchChat_requiresHostChatSupportAndSendsChatPayload() {
+        val (_, b) = newBinderPair()
+        val control = RecordingPluginControl()
+        b.registerHostCallback(RecordingHostCallback())
+        b.initializePluginV2(PluginInitParcel("com.aitech.weartak_civ", 1000, "com.weartak.plugin.lace", Bundle()), control, null)
+        assertTrue(LacePluginRuntime.isHostAttached())
+        assertFalse(LacePluginRuntime.hostSupportsChat())
+
+        b.initializePluginV2(
+            PluginInitParcel("com.aitech.weartak_civ", 1000, "com.weartak.plugin.lace",
+                Bundle().apply { putBoolean(HOST_EXTRA_CHAT_DISPATCH_V1, true) }),
+            control, null,
+        )
+        assertTrue(LacePluginRuntime.hostSupportsChat())
+
+        val outcome = LacePluginRuntime.dispatchChat("lace.transmit", "ALPHA-1 LACE: L:GREEN A:GREEN C:GREEN E:GREEN")
+        assertTrue(outcome.success)
+        val req = control.cotRequests.single()
+        assertEquals("chat", req.payloadFormat)
+        assertEquals("ALPHA-1 LACE: L:GREEN A:GREEN C:GREEN E:GREEN", req.payload.getString("message"))
+        assertEquals("All Chat Rooms", req.payload.getString("roomUid"))
+        assertEquals("All Chat Rooms", req.payload.getString("roomTitle"))
     }
 
     @Test
@@ -304,9 +330,12 @@ class LacePluginBinderTest {
 
         val registerCalls = mutableListOf<RegisterCall>()
         val unregisterCalls = mutableListOf<Pair<String, String>>()
+        val cotRequests = mutableListOf<CotRequestParcel>()
         val mapLayerControl = RecordingMapLayerControl()
 
-        override fun requestCotDispatch(request: CotRequestParcel?) = Unit
+        override fun requestCotDispatch(request: CotRequestParcel?) {
+            if (request != null) cotRequests += request
+        }
 
         override fun requestAlert(request: AlertRequestParcel?) = Unit
 

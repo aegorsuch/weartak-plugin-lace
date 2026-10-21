@@ -2,9 +2,11 @@
 
 LACE (Liquid, Ammunition, Casualty, Equipment) report tool for WearTAK on Wear OS. Pick GREEN /
 YELLOW / RED / BLACK for each category, add WIA/KIA counts and notes, then **TRANSMIT REPORT**.
-The report is sent as a GeoChat (`b-t-f`) to **All Chat Rooms** from the watch's WearTAK identity, so every
-TAK client can read it, with a structured `<lace/>` detail attached. LACE hands the CoT to WearTAK core
-(`requestCotDispatch`), which relays it to the TAK network.
+LACE asks WearTAK core to send the report as a chat to **All Chat Rooms**
+(`requestCotDispatch` with payload format `chat`). WearTAK sends it exactly like its own chat:
+from the watch's UID and callsign, saved in the watch's chat history, and routed by WearTAK's
+dispatch policy (only the companion app when bonded; otherwise TAK Server, SITX and multicast).
+Requires a WearTAK build that advertises the `chatDispatchV1` host extra.
 
 Built from the [WearTAK plugin template](https://git.tak.gov/weartak-plugins/weartak-plugin-template).
 
@@ -41,26 +43,11 @@ build official releases. Versioning and release rules match WearTAK; see
 [ci/README.md](ci/README.md). Release LACE works with release WearTAK; debug builds
 work with WearTAK `.dev`.
 
-## CoT format
+## Report format
 
-```xml
-<event type="b-t-f" how="m-g" uid="GeoChat.<WearTAK UID>.All Chat Rooms.<msg id>" ...>
-  <point lat="..." lon="..." hae="..." ce="..." le="..."/>
-  <detail>
-    <__chat chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="ALPHA-1" messageId="...">
-      <chatgrp uid0="<WearTAK UID>" uid1="All Chat Rooms" id="All Chat Rooms"/>
-    </__chat>
-    <link uid="<WearTAK UID>" type="a-f-G-U-C" relation="p-p"/>
-    <remarks source="BAO.F.ATAK.<WearTAK UID>" to="All Chat Rooms">ALPHA-1 LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L</remarks>
-    <lace liquid="YELLOW" ammo="GREEN" casualty="RED" equipment="GREEN"
-          urgent_wia="1" priority_wia="0" routine_wia="2" kia="0"/>
-  </detail>
-</event>
+```text
+ALPHA-1 LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L; Ammo: 5.56 - 4 mags
 ```
 
+WIA/KIA counts appear when any is above zero; notes appear when filled in.
 Liquid and ammunition use GREEN >75%, YELLOW 25-75%, RED <25%, BLACK out.
-
-The sender UID is WearTAK's own device UID, read from the host device-status telemetry key `deviceUid`.
-WearTAK builds without that key cannot send LACE reports (LACE never invents a sender).
-Position comes from WearTAK's self PLI, falling back to the watch's last known location. The plugin
-SDK has no map-center query, so with no fix the report is not sent (never 0,0).

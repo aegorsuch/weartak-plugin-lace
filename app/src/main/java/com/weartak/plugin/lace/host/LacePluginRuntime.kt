@@ -75,10 +75,15 @@ data class LaceActionOutcome(
     val attached: Boolean,
 )
 
-/** WearTAK telemetry key for the host's own CoT UID (not yet a DeviceStatusContract constant). */
-const val TELEMETRY_KEY_DEVICE_UID = "deviceUid"
+/** Host extra: WearTAK accepts `requestCotDispatch` with payload format [COT_FORMAT_CHAT]. */
+const val HOST_EXTRA_CHAT_DISPATCH_V1 = "chatDispatchV1"
+const val COT_FORMAT_CHAT = "chat"
+const val CHAT_KEY_MESSAGE = "message"
+const val CHAT_KEY_ROOM_UID = "roomUid"
+const val CHAT_KEY_ROOM_TITLE = "roomTitle"
+const val CHAT_ALL_ROOMS = "All Chat Rooms"
 
-data class HostTelemetry(val lat: Double?, val lon: Double?, val callsign: String?, val deviceUid: String? = null)
+data class HostTelemetry(val lat: Double?, val lon: Double?, val callsign: String?)
 
 fun interface LacePluginSnapshotObserver {
     fun onSnapshotChanged(snapshot: LacePluginSnapshot)
@@ -130,6 +135,9 @@ object LacePluginRuntime {
 
     @Volatile
     private var hostUid: Int? = null
+
+    @Volatile
+    private var hostSupportsChat: Boolean = false
 
     @Volatile
     private var lifecycleState: PluginLifecycleState = PluginLifecycleState.BOUND
@@ -343,6 +351,7 @@ object LacePluginRuntime {
             if (init != null) {
                 hostPackageName = init.hostPackageName
                 hostUid = init.hostUid
+                hostSupportsChat = init.hostExtras?.getBoolean(HOST_EXTRA_CHAT_DISPATCH_V1, false) == true
             }
             pluginControl = control
             pluginControlV2 = controlV2
@@ -546,7 +555,6 @@ object LacePluginRuntime {
                 lat = if (hasFix && t.containsKey(DeviceStatusContract.KEY_LAT)) t.getDouble(DeviceStatusContract.KEY_LAT) else null,
                 lon = if (hasFix && t.containsKey(DeviceStatusContract.KEY_LON)) t.getDouble(DeviceStatusContract.KEY_LON) else null,
                 callsign = t.getString(DeviceStatusContract.KEY_CALLSIGN)?.takeIf { it.isNotBlank() },
-                deviceUid = t.getString(TELEMETRY_KEY_DEVICE_UID)?.takeIf { it.isNotBlank() },
             )
         } catch (ex: RemoteException) {
             Log.w(TAG, "device status failed", ex); null
@@ -555,20 +563,29 @@ object LacePluginRuntime {
         }
     }
 
-    /** Hands a CoT event to WearTAK core, which ingests it locally and relays it to the TAK network. */
-    fun dispatchCotXml(actionId: String, cotXml: String): LaceActionOutcome {
+    /** True when the bound WearTAK can send plugin chat through its own chat pipeline. */
+    fun hostSupportsChat(): Boolean = synchronized(lock) { pluginControl != null && hostSupportsChat }
+
+    /**
+     * Asks WearTAK to send [message] as this watch, through WearTAK chat: the watch's UID and
+     * callsign, its chat history, and every connected transport (TAK Server, SITX, multicast, companion).
+     */
+    fun dispatchChat(actionId: String, message: String, roomUid: String = CHAT_ALL_ROOMS, roomTitle: String = roomUid): LaceActionOutcome {
         val control = synchronized(lock) { pluginControl } ?: return notAttached(actionId, "WearTAK not connected")
         return try {
-            control.requestCotDispatch(CotRequestParcel("cot_xml", Bundle().apply { putString("xml", cotXml) }))
-            recordAction(actionId, "CoT handed to WearTAK")
+            control.requestCotDispatch(CotRequestParcel(COT_FORMAT_CHAT, Bundle().apply {
+                putString(CHAT_KEY_MESSAGE, message)
+                putString(CHAT_KEY_ROOM_UID, roomUid)
+                putString(CHAT_KEY_ROOM_TITLE, roomTitle)
+            }))
+            recordAction(actionId, "chat handed to WearTAK")
         } catch (ex: RemoteException) {
-            reportActionError(actionId, "CoT dispatch failed: ${ex.message ?: "remote error"}")
+            reportActionError(actionId, "chat dispatch failed: ${ex.message ?: "remote error"}")
         } catch (ex: RuntimeException) {
-            reportActionError(actionId, "CoT dispatch failed: ${ex.message ?: "runtime error"}")
+            reportActionError(actionId, "chat dispatch failed: ${ex.message ?: "runtime error"}")
         }
     }
 
-    fun pluginIdOrDefault(): String = synchronized(lock) { declaredPluginId.ifBlank { "com.weartak.plugin.lace" } }
     fun runCotDispatchDemo(): LaceActionOutcome {
         val control = pluginControl ?: return notAttached(ACTION_COT_DEMO, "host control unavailable")
         return try {
@@ -908,6 +925,7 @@ object LacePluginRuntime {
             pluginControlV2 = null
             hostPackageName = null
             hostUid = null
+            hostSupportsChat = false
             lifecycleState = PluginLifecycleState.BOUND
             hostSettings = null
             lastActionId = "idle"

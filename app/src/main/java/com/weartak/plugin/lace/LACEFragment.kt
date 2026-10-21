@@ -1,14 +1,8 @@
 package com.weartak.plugin.lace
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.RemoteInput
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -57,12 +51,10 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.input.RemoteInputIntentHelper
-import com.weartak.plugin.lace.host.HostTelemetry
 import com.weartak.plugin.lace.host.LacePluginRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 private const val INPUT_KEY = "lace_input"
 private const val ACTION_TRANSMIT = "lace.transmit"
@@ -94,7 +86,7 @@ private sealed interface TxState {
     data class Done(val ok: Boolean, val message: String) : TxState
 }
 
-/** LACE report form (Wear OS). Report CoT is dispatched through WearTAK core. */
+/** LACE report form (Wear OS). The report is sent as WearTAK chat through WearTAK core. */
 @Composable
 fun LACEFragment() {
     val ctx = LocalContext.current
@@ -193,7 +185,7 @@ fun LACEFragment() {
                         tx = TxState.Sending
                         val snapshot = report
                         scope.launch {
-                            tx = withContext(Dispatchers.IO) { transmit(ctx, snapshot) }
+                            tx = withContext(Dispatchers.IO) { transmit(snapshot) }
                         }
                     },
                     label = {
@@ -325,72 +317,21 @@ private fun WearTakHomeButton() {
     }
 }
 
-/** Stable per-install chat sender UID (the plugin SDK does not expose the WearTAK device UID). */
-private fun senderUid(ctx: Context): String {
-    val prefs = ctx.getSharedPreferences("lace", Context.MODE_PRIVATE)
-    return prefs.getString("sender_uid", null) ?: "LACE-${UUID.randomUUID()}".also {
-        prefs.edit().putString("sender_uid", it).apply()
-    }
-}
-
 private fun resolveCallsign(): String? =
     LacePluginRuntime.hostCallsign() ?: LacePluginRuntime.readHostTelemetry()?.callsign
 
 /** Blocking; run off the main thread. */
-private fun transmit(ctx: Context, report: LaceReport): TxState {
+private fun transmit(report: LaceReport): TxState {
     if (!LacePluginRuntime.isHostAttached()) {
         return TxState.Done(false, "WearTAK not connected. Open WearTAK and enable LACE.")
     }
-    val host = LacePluginRuntime.readHostTelemetry()
-    // The chat must come from this WearTAK identity, so never invent a sender UID.
-    val senderUid = host?.deviceUid
-        ?: return TxState.Done(false, "Update WearTAK: it did not share its device UID. Not sent.")
-    val fix = resolveFix(ctx, host) ?: return TxState.Done(false, "No location fix. Not sent.")
-    val senderCallsign = host.callsign ?: LacePluginRuntime.hostCallsign() ?: report.callsign
-    val xml = buildLaceCotEvent(report, fix, senderUid, senderCallsign, UUID.randomUUID().toString())
-    val outcome = LacePluginRuntime.dispatchCotXml(ACTION_TRANSMIT, xml)
+    if (!LacePluginRuntime.hostSupportsChat()) {
+        return TxState.Done(false, "Update WearTAK to send LACE chat. Not sent.")
+    }
+    val outcome = LacePluginRuntime.dispatchChat(ACTION_TRANSMIT, laceRemarks(report))
     return if (outcome.success) {
-        val src = if (fix.source == LaceFixSource.HOST_PLI) "PLI" else "device GPS"
-        TxState.Done(true, "Sent to All Chat Rooms ($src)")
+        TxState.Done(true, "Sent to All Chat Rooms")
     } else {
         TxState.Done(false, "Send failed: ${outcome.message.removePrefix("NOT_ATTACHED: ")}")
     }
-}
-
-/**
- * Report position: WearTAK self PLI first, then the watch's last known location.
- * The WearTAK plugin SDK exposes no map-center query, so with neither available the report is not sent.
- */
-private fun resolveFix(ctx: Context, host: HostTelemetry?): LaceFix? {
-    host?.let { t ->
-        if (t.lat != null && t.lon != null) {
-            val fix = LaceFix(t.lat, t.lon, LaceFixSource.HOST_PLI)
-            if (fix.isValid) return fix
-        }
-    }
-    return lastKnownDeviceFix(ctx)
-}
-
-@SuppressLint("MissingPermission")
-private fun lastKnownDeviceFix(ctx: Context): LaceFix? {
-    val granted = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-        .any { ctx.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-    if (!granted) return null
-    val lm = ctx.getSystemService(LocationManager::class.java) ?: return null
-    val providers = buildList {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
-        add(LocationManager.GPS_PROVIDER)
-        add(LocationManager.NETWORK_PROVIDER)
-    }
-    val loc = providers.mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
-        .maxByOrNull { it.time } ?: return null
-    val fix = LaceFix(
-        lat = loc.latitude,
-        lon = loc.longitude,
-        source = LaceFixSource.DEVICE_GPS,
-        hae = if (loc.hasAltitude()) loc.altitude else COT_UNKNOWN,
-        ce = if (loc.hasAccuracy()) loc.accuracy.toDouble() else COT_UNKNOWN,
-        le = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && loc.hasVerticalAccuracy()) loc.verticalAccuracyMeters.toDouble() else COT_UNKNOWN,
-    )
-    return fix.takeIf { it.isValid }
 }
