@@ -53,7 +53,7 @@ class LacePluginBinder(
 
     override fun getCapabilities(): PluginCapabilitiesParcel {
         log("getCapabilities")
-        return LacePluginRuntime.getCapabilities(hostedMainUi = true, externalMainActivity = true)
+        return LacePluginRuntime.getCapabilities(hostedMainUi = false, externalMainActivity = true)
     }
 
     override fun getApiVersion(): Int {

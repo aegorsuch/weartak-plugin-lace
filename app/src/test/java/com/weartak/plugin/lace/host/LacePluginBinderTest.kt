@@ -75,11 +75,13 @@ class LacePluginBinderTest {
     }
 
     @Test
-    fun capabilities_exposeLauncherAndHostedMainUi() {
+    fun capabilities_launchLaceActivityInsteadOfHostedPlaceholders() {
         val (_, b) = newBinderPair()
         val caps = b.getCapabilities()
-        assertTrue(caps.hostedMainUi)
+        assertFalse(caps.hostedMainUi)
         assertTrue(caps.externalMainActivity)
+        assertFalse(caps.hostedSettingsUi)
+        assertFalse(caps.externalSettingsActivity)
     }
 
     @Test
