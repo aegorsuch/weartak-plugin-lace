@@ -410,7 +410,7 @@ object LacePluginRuntime {
 
     fun getCapabilities(hostedMainUi: Boolean, externalMainActivity: Boolean) =
         PluginCapabilitiesParcel(
-            hostedSettingsUi = true,
+            hostedSettingsUi = false,
             hostedMainUi = hostedMainUi,
             externalSettingsActivity = false,
             externalMainActivity = externalMainActivity,

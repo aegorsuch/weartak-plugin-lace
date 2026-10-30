@@ -38,6 +38,26 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Debug builds use the standard Android debug key so WearTAK debug builds can bind the plugin.
 
+Dependency routing matches WearTAK core. Both plugin and library resolution try TAK.gov
+Artifactory first when credentials are available, with public repositories as fallbacks.
+Username and password are selected independently from the first nonblank environment variable:
+
+| Credential | Priority order |
+| --- | --- |
+| Username | `ARTIFACTORY_CONSUME_USER`, `ARTIFACTORY_USER`, `TAK_USERNAME` |
+| Password | `ARTIFACTORY_CONSUME_PASSWORD`, `ARTIFACTORY_PASSWORD`, `TAK_PASSWORD` |
+
+Both must be present to enable `https://artifacts.tak.gov/artifactory/maven-release`.
+Without them, builds use public repositories only and remain subject to public rate limits.
+Gradle logs only whether the plugin mirror is enabled, never credential values.
+Gradle CI jobs exchange their job identity through TAK.gov's Artifactory token service,
+then supply the per-job token to Gradle and Robolectric (which downloads outside Gradle's
+repositories). The non-root launcher image uses the service's `_no_depends` template,
+not the bundled Gradle init script. Successful logs show `Token exchange successful` and
+`takArtifactory for plugins: enabled`; never log token values. If the service requests
+an Artifactory login, the triggering user must sign in to `artifacts.tak.gov` once before
+retrying. No static secrets need copying and no new permissions are granted by this setup.
+
 ## Releases
 
 Pushes to `main` on git.tak.gov build a WearTAK production-signed APK and publish it to the
