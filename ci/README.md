@@ -35,8 +35,10 @@ Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
 After **all** earlier jobs pass, `publish_github_main` publishes the verified `main_release`
 APK to the GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)** on the
-fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset `LACE-<version>.apk`
-(`<version>` is the versionName without `+sha`). It is a stable release (`prerelease=false`)
+fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset
+`WearTAK-Plugin-LACE-<version>-p<IID>.apk` (the base version comes from versionName without
+its pipeline suffix or `+sha`; `<IID>` is the current GitLab project pipeline IID). It is a
+stable release (`prerelease=false`)
 that does not take GitHub's "Latest" flag. The body records versionName/versionCode,
 pipeline ID/IID and URL, source SHA and APK SHA-256.
 

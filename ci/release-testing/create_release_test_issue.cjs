@@ -5,7 +5,7 @@ const { join } = require('node:path');
 const TAG = 'TAK.gov-Forge-CI-CD-Pipeline-Release';
 const RELEASE_MARKER = /<!-- lace-rolling-v1 (\{.*?\}) -->/;
 const PROJECT_ID = '6912';
-const APK = /^LACE-[0-9A-Za-z._-]+\.apk$/;
+const APK = /^WearTAK-Plugin-LACE-[0-9A-Za-z._-]+-p[1-9]\d*\.apk$/;
 
 function releaseState(release) {
   const match = RELEASE_MARKER.exec(release.body || '');
@@ -57,7 +57,7 @@ async function createReleaseTestIssue({ github, context, core, tester }) {
     }
   }
   const apk = (release.assets || []).find((a) => APK.test(a.name) && a.state === 'uploaded');
-  if (!apk) throw new Error(`Release ${TAG} has no uploaded LACE APK.`);
+  if (!apk) throw new Error(`Release ${TAG} has no uploaded WearTAK LACE APK.`);
 
   const marker = `<!-- lace-release-testing:pipeline-${pipelineId} -->`;
   const assignable = await canAssign(github, repo, tester);

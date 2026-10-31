@@ -13,8 +13,8 @@ function release(overrides = {}) {
     html_url: `https://github.com/o/r/releases/tag/${TAG}`,
     body: `- APK version: **5.8.0.3-p108**\n\n<!-- lace-rolling-v1 ${JSON.stringify(STATE)} -->`,
     assets: [{
-      name: 'LACE-5.8.0.3-p108.apk', state: 'uploaded',
-      browser_download_url: 'https://github.com/o/r/releases/download/x/LACE-5.8.0.3-p108.apk',
+      name: 'WearTAK-Plugin-LACE-5.8.0.3-p108.apk', state: 'uploaded',
+      browser_download_url: 'https://github.com/o/r/releases/download/x/WearTAK-Plugin-LACE-5.8.0.3-p108.apk',
     }],
     ...overrides,
   };
@@ -66,7 +66,7 @@ test('creates one assigned checklist with download link and release details', as
   assert.equal(issue.title, 'Release testing: TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p108)');
   assert.deepEqual(issue.assignees, ['paul-weartak']);
   assert.match(issue.body, /<!-- lace-release-testing:pipeline-1791701 -->/);
-  assert.match(issue.body, /\[LACE-5\.8\.0\.3-p108\.apk\]\(https:/);
+  assert.match(issue.body, /\[WearTAK-Plugin-LACE-5\.8\.0\.3-p108\.apk\]\(https:/);
   assert.match(issue.body, /APK version: \*\*5\.8\.0\.3-p108\*\*/);
   assert.match(issue.body, /## Core acceptance checklist/);
 });
@@ -123,4 +123,12 @@ test('rejects bad tester, missing metadata, foreign project or missing APK', asy
   }
   const f = fake({ rel: release({ assets: [] }) });
   await assert.rejects(createReleaseTestIssue({ ...f, context: dispatch(), tester: 'paul-weartak' }), /no uploaded/);
+  const legacy = fake({ rel: release({ assets: [{
+    name: 'LACE-5.8.0.3-p108.apk', state: 'uploaded',
+    browser_download_url: 'https://github.com/o/r/releases/download/x/LACE-5.8.0.3-p108.apk',
+  }] }) });
+  await assert.rejects(
+    createReleaseTestIssue({ ...legacy, context: dispatch(), tester: 'paul-weartak' }),
+    /no uploaded/,
+  );
 });
