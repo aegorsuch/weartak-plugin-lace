@@ -16,7 +16,11 @@ REPO = "aegorsuch/weartak-plugin-lace"
 TAG = "TAK.gov-Forge-CI-CD-Pipeline-Release"
 TITLE = "TAK.gov Forge CI/CD Pipeline Release"
 MARKER = "lace-rolling-v1"
-ASSET_PATTERN = re.compile(r"LACE-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
+ASSET_PREFIX = "WearTAK-Plugin-LACE"
+ASSET_PATTERN = re.compile(
+    rf"{re.escape(ASSET_PREFIX)}-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk"
+)
+PREVIOUS_ASSET_PATTERN = re.compile(r"LACE-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
 LEGACY_ASSET_PATTERN = re.compile(r"lace-development-p([1-9][0-9]*)-([0-9a-f]{64})\.apk")
 LABEL_PREFIX = "lace-rolling-v1:"
 # Handled by .github/workflows/release-testing.yml on the GitHub default branch.
@@ -196,14 +200,14 @@ def state_from(release, project_id):
 def display_version(version, pipeline_iid):
     """User-facing build id, e.g. 5.8.0.3-p105 (drops +sha build metadata)."""
     short = version.split("+", 1)[0]
-    suffix = f"-p{pipeline_iid}"
-    return short if short.endswith(suffix) else short + suffix
+    base = re.sub(r"-p[1-9][0-9]*$", "", short)
+    return f"{base}-p{pipeline_iid}"
 
 
 def asset_pipeline(asset):
     """Pipeline IID of an asset this publisher owns, or None for anything else."""
     name = asset.get("name", "")
-    match = ASSET_PATTERN.fullmatch(name)
+    match = ASSET_PATTERN.fullmatch(name) or PREVIOUS_ASSET_PATTERN.fullmatch(name)
     if match and asset.get("label") == name:
         return int(match[1])
     legacy = LEGACY_ASSET_PATTERN.fullmatch(name)
@@ -265,7 +269,7 @@ def publish(api, state, apk, digest, version, code):
         })
     release_id = release["id"]
     assets = api.assets(release_id)
-    name = f"LACE-{short}.apk"
+    name = f"{ASSET_PREFIX}-{short}.apk"
     # GitHub shows the label instead of the file name, so keep it human-readable.
     label = name
     existing = [item for item in assets if item["name"] == name]

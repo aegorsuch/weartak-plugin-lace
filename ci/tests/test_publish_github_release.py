@@ -36,6 +36,11 @@ def environment():
 
 
 def asset(asset_id, iid, content=b"old apk"):
+    name = f"{p.ASSET_PREFIX}-5.8.0.3-p{iid}.apk"
+    return {"id": asset_id, "name": name, "label": name, "state": "uploaded", "size": len(content)}
+
+
+def previous_asset(asset_id, iid, content=b"old apk"):
     name = f"LACE-5.8.0.3-p{iid}.apk"
     return {"id": asset_id, "name": name, "label": name, "state": "uploaded", "size": len(content)}
 
@@ -154,7 +159,8 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
         self.assertEqual(api.release["tag_name"], "TAK.gov-Forge-CI-CD-Pipeline-Release")
         self.assertEqual([(a["name"], a["label"]) for a in api.items],
-                         [("LACE-5.8.0.3-p12.apk", "LACE-5.8.0.3-p12.apk")])
+                         [("WearTAK-Plugin-LACE-5.8.0.3-p12.apk",
+                           "WearTAK-Plugin-LACE-5.8.0.3-p12.apk")])
         self.assertEqual(api.release["make_latest"], "false")
         body = api.release["body"]
         for value in ("5.8.0.3", "583", self.digest, "e" * 40, self.state["pipeline_url"]):
@@ -249,14 +255,32 @@ class PublisherTests(unittest.TestCase):
         api = FakeGitHub()
         self.publish(api)
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
-        self.assertEqual(api.items[0]["name"], "LACE-5.8.0.3-p12.apk")
+        self.assertEqual(api.items[0]["name"], "WearTAK-Plugin-LACE-5.8.0.3-p12.apk")
         self.assertIn("5.8.0.3-p12+de139f69", api.release["body"])
+
+    def test_version_pipeline_suffix_is_normalized_to_current_pipeline(self):
+        self.metadata["elements"][0]["versionName"] = "5.8.0.3-p11+de139f69"
+        self.write_metadata()
+        api = FakeGitHub()
+        self.publish(api)
+        self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
+        self.assertEqual(api.items[0]["name"], "WearTAK-Plugin-LACE-5.8.0.3-p12.apk")
 
     def test_legacy_named_assets_are_cleaned_up(self):
         api = FakeGitHub(dict(self.state, pipeline_iid=11))
         api.items = [legacy_asset(2, 11), dict(legacy_asset(3, 10), label=None)]
         self.publish(api)
         self.assertEqual({a["id"] for a in api.items}, {3, 100})
+
+    def test_previous_name_is_retained_for_current_pipeline_then_cleaned_after_replacement(self):
+        api = FakeGitHub(dict(self.state, pipeline_iid=11))
+        current_previous = previous_asset(1, 12)
+        old_previous = previous_asset(2, 11)
+        api.items = [current_previous, old_previous]
+        self.publish(api)
+        self.assertIn(current_previous, api.items)
+        self.assertNotIn(old_previous, api.items)
+        self.assertIn(asset(100, 12, self.apk.read_bytes()), api.items)
 
     def test_other_archived_disabled_or_unknown_destination_fails_without_writes(self):
         for change in ({"full_name": "other/repository"}, {"full_name": None},
