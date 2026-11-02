@@ -116,6 +116,16 @@ publisher safety rules, administrator setup, release testing and local validatio
 
 ## License
 
-No project license file or explicit project license declaration is present at this
-revision. Licensing terms are unspecified here; this README does not grant a license
-or change any existing rights or third-party licensing obligations.
+The repository owner's original code is licensed under the GNU General Public License,
+version 3 or (at your option) any later version (**GPL-3.0-or-later**). See [LICENSE](LICENSE)
+for the full license text.
+
+This declaration covers only the repository owner's original code, not third-party
+components or code originating from the WearTAK plugin template. Those components
+retain their own licensing terms and notices; this declaration does not grant rights
+to them or change existing rights or attribution.
+
+The Gradle wrapper scripts (`gradlew`, `gradlew.bat`) and
+`gradle/wrapper/gradle-wrapper.jar` retain their Apache-2.0 notices, including the
+license embedded in the JAR's `META-INF/LICENSE`. The separately obtained WearTAK
+plugin SDK and other dependencies are not relicensed by this declaration.
