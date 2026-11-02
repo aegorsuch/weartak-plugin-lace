@@ -1,5 +1,7 @@
 # LACE (WearTAK plugin)
 
+## Purpose and Capabilities
+
 LACE (Liquid, Ammunition, Casualty, Equipment) report tool for WearTAK on Wear OS. Pick GREEN /
 YELLOW / RED / BLACK for each category, add WIA/KIA counts and notes, then **TRANSMIT REPORT**.
 LACE asks WearTAK core to send the report as a chat to **All Chat Rooms**
@@ -13,7 +15,54 @@ the form intact, as do any new edits made while a report is sending.
 
 Built from the [WearTAK plugin template](https://git.tak.gov/weartak-plugins/weartak-plugin-template).
 
-## WearTAK plugin SDK
+### Report format
+
+```text
+LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L; Ammo: 5.56 - 4 mags
+```
+
+WIA/KIA counts appear when any is above zero; notes appear when filled in.
+Liquid and ammunition use GREEN >75%, YELLOW 25-75%, RED <25%, BLACK out.
+
+## Status
+
+Release automation is configured as described below. Current deployment readiness and
+device-validation results are not documented here.
+
+### Releases
+
+Pushes to `main` on git.tak.gov build a WearTAK production-signed APK and publish it to the
+GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)**; `vX.Y.Z[.B]` tags
+build official releases. Versioning and release rules match WearTAK; see
+[ci/README.md](ci/README.md). Release LACE works with release WearTAK; debug builds
+work with WearTAK `.dev`.
+
+## Point of Contacts
+
+Project contacts are not documented in this repository.
+
+## Ports Required
+
+LACE hands report dispatch to WearTAK through the plugin Binder interface; it does not
+declare an Internet permission or configure network ports itself. Network ports for the
+companion app, TAK Server, SITX and multicast depend on the WearTAK deployment and are
+not specified in this repository.
+
+## Equipment Required
+
+A Wear OS watch running a compatible WearTAK host with the `chatDispatchV1` extra is
+required for report transmission. The app requires watch hardware and Android API 30
+or later (`app/src/main/AndroidManifest.xml`, `app/build.gradle.kts`).
+Release and debug host/plugin signing compatibility is described under [Releases](#releases).
+
+## Equipment Supported
+
+The app targets Wear OS watches. Specific watch models and a verified device-support
+matrix are not documented in this repository.
+
+## Compilation
+
+### WearTAK plugin SDK
 
 The WearTAK plugin SDK is not included in this repository. It is distributed to TAK.gov users through the
 plugin template. With git.tak.gov access, fetch it into `app/libs/` before building:
@@ -29,7 +78,7 @@ plugin template. With git.tak.gov access, fetch it into `app/libs/` before build
 Both scripts sparse-clone `weartak-plugins/weartak-plugin-template` and copy
 `app/libs/weartak-plugin-sdk-{debug,release}.aar`. Pass a ref (branch or tag) to pin a version.
 
-## Build and install
+### Build and install
 
 ```bash
 ./gradlew assembleDebug
@@ -58,19 +107,15 @@ not the bundled Gradle init script. Successful logs show `Token exchange success
 an Artifactory login, the triggering user must sign in to `artifacts.tak.gov` once before
 retrying. No static secrets need copying and no new permissions are granted by this setup.
 
-## Releases
+## Developer Notes
 
-Pushes to `main` on git.tak.gov build a WearTAK production-signed APK and publish it to the
-GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)**; `vX.Y.Z[.B]` tags
-build official releases. Versioning and release rules match WearTAK; see
-[ci/README.md](ci/README.md). Release LACE works with release WearTAK; debug builds
-work with WearTAK `.dev`.
+### Testing and publishing
 
-## Report format
+See [CI/CD and releases](ci/README.md) for pipeline gates, signing requirements,
+publisher safety rules, administrator setup, release testing and local validation commands.
 
-```text
-LACE: L:YELLOW A:GREEN C:RED E:GREEN (WIA U:1 P:0 R:2 KIA:0) - Liquid: Water 2L; Ammo: 5.56 - 4 mags
-```
+## License
 
-WIA/KIA counts appear when any is above zero; notes appear when filled in.
-Liquid and ammunition use GREEN >75%, YELLOW 25-75%, RED <25%, BLACK out.
+No project license file or explicit project license declaration is present at this
+revision. Licensing terms are unspecified here; this README does not grant a license
+or change any existing rights or third-party licensing obligations.
