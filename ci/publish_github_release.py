@@ -1,6 +1,7 @@
 """Publish only the verified main_release APK; no code/tag synchronization."""
 
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -25,11 +26,26 @@ LEGACY_ASSET_PATTERN = re.compile(r"lace-development-p([1-9][0-9]*)-([0-9a-f]{64
 LABEL_PREFIX = "lace-rolling-v1:"
 # Handled by .github/workflows/release-testing.yml on the GitHub default branch.
 DISPATCH_EVENT = "lace-release-published"
+MARKET_DISPATCH_URL = (
+    "https://api.github.com/repos/aegorsuch/weartak-wearos/actions/workflows/"
+    "publish-market-catalog.yml/dispatches"
+)
 OUTPUT = Path("app/build/outputs/apk/release")
 
 
 class PublishError(Exception):
     pass
+
+
+class NotificationError(PublishError):
+    pass
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def http_error_302(self, req, fp, code, msg, headers):
+        raise NotificationError(f"Market refresh notification refused an HTTP {code} redirect.")
+
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
 
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
@@ -118,6 +134,34 @@ class GitHub:
             if len(batch) < 100:
                 return result
             page += 1
+
+
+def dispatch_market_refresh(token):
+    if not token:
+        raise NotificationError(
+            "Market refresh notification failed: missing MARKET_CATALOG_DISPATCH_TOKEN."
+        )
+    request = urllib.request.Request(
+        MARKET_DISPATCH_URL,
+        data=json.dumps({"ref": "main"}).encode(),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "LACE-GitLab-market-refresh",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:
+            status = response.status
+    except urllib.error.HTTPError as error:
+        status = error.code
+    except (OSError, http.client.HTTPException, ValueError):
+        raise NotificationError("Market refresh notification failed: GitHub request failed.") from None
+    if status != 204:
+        raise NotificationError(f"Market refresh notification failed: HTTP {status}.")
 
 
 def configuration(env):
@@ -220,7 +264,7 @@ def managed_asset(asset):
     return asset_pipeline(asset) is not None
 
 
-def publish(api, state, apk, digest, version, code):
+def publish(api, state, apk, digest, version, code, *, market_token):
     repository = api.request("GET", "")
     if (repository.get("full_name") != REPO or
             repository.get("archived") is not False or
@@ -305,25 +349,38 @@ def publish(api, state, apk, digest, version, code):
         if owner is not None and owner < state["pipeline_iid"]:
             api.request("DELETE", f"releases/assets/{old['id']}")
     print(f"Published {title}: version {version} ({code}), SHA256 {digest}")
-    # Only a verified build reaches testers. The workflow re-reads the release itself and
-    # deduplicates per pipeline, so retrying a failed notification is safe.
+    errors = []
+    try:
+        dispatch_market_refresh(market_token)
+    except NotificationError as error:
+        errors.append(str(error))
+    # Keep tester notification independent of Market. Its workflow deduplicates per pipeline.
     try:
         api.request("POST", "dispatches", {
             "event_type": DISPATCH_EVENT,
             "client_payload": {"pipeline_id": state["pipeline_id"], "release_id": release_id},
         })
-    except PublishError:
-        raise PublishError(
-            "The release is published, but the release-testing notification failed. "
-            "Retry this job; the release and tester checklist are not duplicated."
-        ) from None
+    except (PublishError, OSError, http.client.HTTPException, ValueError):
+        errors.append("The release-testing notification failed.")
+    if errors:
+        raise NotificationError(
+            f"The release is published. {' '.join(errors)} "
+            "Fix the notification configuration or connectivity and retry this job. "
+            "See ci/README.md for setup/recovery."
+        )
 
 
 def main():
     try:
         state = configuration(os.environ)
         apk, digest, version, code = artifact(Path.cwd())
-        publish(GitHub(os.environ["LACE_GITHUB_TOKEN"]), state, apk, digest, version, code)
+        publish(
+            GitHub(os.environ["LACE_GITHUB_TOKEN"]), state, apk, digest, version, code,
+            market_token=os.environ.get("MARKET_CATALOG_DISPATCH_TOKEN"),
+        )
+    except NotificationError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
     except (PublishError, OSError, ValueError, KeyError, TypeError, urllib.error.URLError) as error:
         # urllib transport errors can contain signed URLs; do not echo their details.
         message = str(error) if isinstance(error, PublishError) else type(error).__name__
