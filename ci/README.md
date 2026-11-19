@@ -74,6 +74,26 @@ and opens one issue per pipeline, `Release testing: <release title>`, with the A
 (needs Write access). Existing issues, including closed ones, are never recreated.
 Edit the checklist when features change.
 
+## Market refresh (WEARTAK-322)
+
+After APK digest readback, stable release verification, and older owned asset cleanup,
+`publish_github_main` dispatches `publish-market-catalog.yml` on `main` in
+`aegorsuch/weartak-wearos`. This is independent of the release-testing notification and
+does not replace the hourly catalog refresh. Skipped, stale, failed, debug, and
+prerelease builds do not dispatch.
+
+Before deploying the hook, make sure the [catalog workflow](https://github.com/aegorsuch/weartak-wearos/actions/workflows/publish-market-catalog.yml)
+is enabled on `main` with `workflow_dispatch`. [Create a fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new)
+for **only** `aegorsuch/weartak-wearos`, with repository permission **Actions: read and write**.
+Add it in [LACE GitLab CI/CD settings](https://git.tak.gov/weartak-plugins/weartak-plugin-lace/-/settings/ci_cd)
+as `MARKET_CATALOG_DISPATCH_TOKEN` (masked, protected, hidden, no expansion). Do not
+reuse or broaden `LACE_GITHUB_TOKEN`.
+
+Missing credentials or a rejected/failed dispatch fail the job as a notification
+failure; the verified release stays published. HTTP 204 confirms dispatch acceptance,
+not catalog completion. After fixing the problem, retry `publish_github_main` on the same
+pipeline: it re-verifies the existing APK and can dispatch again unless superseded.
+
 ## Local validation
 
 ```text
